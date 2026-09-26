@@ -1,7 +1,7 @@
 /*
-  Rebuilt from the 2017 portfolio.
-  Image placeholders keep each original image's proportions via --ratio.
-  The home view is just the name; each section shows only when the menu targets it.
+  Build 2: neutral wireframe foundation.
+  Small screens get one stacked column (sidebar, then content).
+  From 50em up, the sidebar is fixed on the left and main sits to its right.
 */
 
 :root {
@@ -21,9 +21,10 @@
   --body-tracking: 0.2em;
 
   --sidebar-width: 30%;
-  --bar-height: 3.5rem;
   --gutter: clamp(1rem, 4vw, 3rem);
 }
+
+/* Base */
 
 *,
 *::before,
@@ -36,7 +37,9 @@ body {
   background: var(--white);
   color: var(--black);
   font-family: var(--font);
+  font-size: var(--body-size);
   font-weight: 100;
+  letter-spacing: var(--body-tracking);
   line-height: 1.5;
 }
 
@@ -63,9 +66,13 @@ a {
   text-decoration: none;
 }
 
+/* Underline as well as color, so hover and the current page don't rely on color alone. */
 a:hover,
-a:focus-visible {
+a:focus-visible,
+a[aria-current="page"] {
   color: var(--red);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 :focus-visible {
@@ -78,7 +85,7 @@ a:focus-visible {
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
@@ -95,36 +102,19 @@ a:focus-visible {
   top: 1rem;
 }
 
-/* Sidebar: fixed on the left; the tagline gives way to the menu on hover. */
+/* Sidebar */
 
 .sidebar {
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: var(--sidebar-width);
   display: grid;
-  place-items: center;
+  gap: 2rem;
+  padding: var(--gutter);
   background: var(--pink);
-  z-index: 5;
-}
-
-.tagline,
-.menu {
-  grid-area: 1 / 1;
-  transition: opacity 0.2s;
 }
 
 .tagline {
   font-size: 1.25rem;
   font-weight: var(--h2-weight);
   letter-spacing: var(--h2-tracking);
-  white-space: nowrap;
-  transform: rotate(90deg);
-}
-
-.menu {
-  padding: 1.25rem;
-  font-size: var(--body-size);
-  letter-spacing: var(--body-tracking);
 }
 
 .menu > ul {
@@ -137,234 +127,118 @@ a:focus-visible {
   gap: 0.9rem;
 }
 
-.menu-open,
-.menu-close {
-  display: none;
-}
-
-/* Only hide the menu where hovering is possible; touch screens always see it. */
-@media (hover: hover) and (min-width: 50.001em) {
-  .menu {
-    opacity: 0;
-  }
-
-  .sidebar:hover .tagline,
-  .sidebar:focus-within .tagline {
-    opacity: 0;
-  }
-
-  .sidebar:hover .menu,
-  .sidebar:focus-within .menu {
-    opacity: 1;
-  }
-}
-
-@media (hover: none) and (min-width: 50.001em) {
-  .tagline {
-    display: none;
-  }
-}
-
-/* Main column */
+/* Page content */
 
 main {
-  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--gutter);
 }
 
-/* One view at a time: the name by default, or whichever section is targeted. */
-
-.project,
+.home,
 .contact {
-  display: none;
+  background: var(--red);
 }
 
-.project:target {
-  display: block;
-}
-
-.contact:target {
-  display: grid;
-}
-
-main:has(:target) .hero {
-  display: none;
-}
-
-.hero {
-  height: 100vh;
-  height: 100dvh;
+.home {
   display: grid;
   place-items: center;
-  padding: var(--gutter);
-  background: var(--red);
-  container-type: inline-size;
-  overflow: hidden;
 }
 
 .name {
-  font-size: 22cqi;
+  font-size: clamp(3rem, 15vw, 14rem);
   line-height: 1;
-  white-space: nowrap;
+  letter-spacing: 0;
   color: var(--white);
   text-shadow: 0.04em 0.04em var(--black);
 }
 
-/* Projects */
-
-.project {
-  padding: var(--gutter) 0;
-}
-
-.project h2 {
-  padding: 0 var(--gutter) var(--gutter);
-  font-size: var(--body-size);
-  letter-spacing: var(--body-tracking);
-  text-align: center;
-}
-
-.gallery {
-  display: grid;
-  gap: clamp(1.5rem, 5vw, 3rem);
-}
-
-.project--grid .gallery {
-  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
-  align-items: start;
-  gap: 1rem;
-  padding: 0 var(--gutter);
-}
-
-.placeholder {
-  aspect-ratio: var(--ratio, 4 / 3);
-  background:
-    linear-gradient(to top right, transparent calc(50% - 0.5px), var(--white) 50%, transparent calc(50% + 0.5px)),
-    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--white) 50%, transparent calc(50% + 0.5px)),
-    var(--gray);
-}
-
-.blurb {
-  display: grid;
-  gap: 1rem;
-  justify-items: center;
-  padding: 0 var(--gutter);
-  text-align: center;
-}
-
-.blurb p {
-  max-width: 50rem;
-}
-
-.blurb-small {
-  font-size: clamp(0.8rem, 1.6vw, 1.125rem);
-  letter-spacing: 0.1em;
-}
-
-.blurb-large {
-  font-size: clamp(1.2rem, 3vw, 2.2rem);
-  letter-spacing: 0.2em;
-  line-height: 1.2;
-  color: var(--red);
-}
-
-.blurb a {
-  font-style: italic;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-/* Contact */
-
 .contact {
-  min-height: 100vh;
+  display: grid;
   place-content: center;
   justify-items: center;
   gap: 2rem;
-  padding: var(--gutter);
-  background: var(--red);
   text-align: center;
 }
 
 .contact-lede {
   max-width: 36rem;
   font-size: clamp(1.4rem, 3vw, 2.2rem);
-  letter-spacing: 0.2em;
   line-height: 1.2;
 }
 
 .contact-email {
   font-size: clamp(1rem, 2vw, 1.45rem);
-  letter-spacing: 0.15em;
   color: var(--white);
   text-shadow: 2px 2px var(--black);
   overflow-wrap: anywhere;
 }
 
-.contact-resume {
-  letter-spacing: 0.15em;
-}
-
+/* Red would vanish on the red background, so contact links keep their color and rely on the underline. */
 .contact a:hover,
 .contact a:focus-visible {
   color: inherit;
-  font-style: italic;
 }
 
-/* Small screens: yellow bar along the bottom opens a full-screen menu. */
+.page-title {
+  margin-bottom: var(--gutter);
+  text-align: center;
+}
 
-@media (max-width: 50em) {
+.placeholder {
+  aspect-ratio: 4 / 3;
+  background: var(--gray);
+}
+
+/* Wide screens: fixed sidebar on the left, tagline gives way to the menu. */
+
+@media (min-width: 50em) {
   .sidebar {
-    inset: auto 0 0 0;
-    width: 100%;
-    height: var(--bar-height);
-    background: var(--yellow);
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--sidebar-width);
+    overflow-y: auto;
+    gap: 0;
+  }
+
+  /* Tagline and menu share one grid cell; auto margins center them but
+     collapse to zero when the menu is taller than the window, so it scrolls. */
+  .tagline,
+  .menu {
+    grid-area: 1 / 1;
+    margin: auto;
+    transition: opacity 0.2s;
   }
 
   .tagline {
-    display: none;
-  }
-
-  .menu-open {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: var(--h2-weight);
-    letter-spacing: var(--h2-tracking);
-    text-align: center;
-  }
-
-  .menu {
-    display: none;
-  }
-
-  .menu:target {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    background: var(--pink);
-    font-size: 0.8rem;
-    text-align: center;
-  }
-
-  .menu-close {
-    display: block;
-    position: absolute;
-    top: 1rem;
-    right: 1.25rem;
-    font-size: 2rem;
-    line-height: 1;
+    writing-mode: vertical-rl;
+    white-space: nowrap;
   }
 
   main {
-    margin-left: 0;
-    padding-bottom: var(--bar-height);
+    margin-left: var(--sidebar-width);
   }
 
-  .hero {
-    height: calc(100vh - var(--bar-height));
-    height: calc(100dvh - var(--bar-height));
+  @media (hover: hover) {
+    .menu {
+      opacity: 0;
+    }
+
+    .sidebar:hover .tagline,
+    .sidebar:focus-within .tagline {
+      opacity: 0;
+    }
+
+    .sidebar:hover .menu,
+    .sidebar:focus-within .menu {
+      opacity: 1;
+    }
   }
 
-  .contact {
-    min-height: calc(100vh - var(--bar-height));
+  /* Touch screens can't hover, so they always see the menu. */
+  @media (hover: none) {
+    .tagline {
+      display: none;
+    }
   }
 }
