@@ -1,13 +1,28 @@
-/* Wireframe styles: grayscale on purpose, so layout is judged before color. */
+/*
+  Rebuilt from the 2017 portfolio.
+  Image placeholders keep each original image's proportions via --ratio.
+  The home view is just the name; each section shows only when the menu targets it.
+*/
 
 :root {
-  --bg: #ffffff;
-  --text: #1a1a1a;
-  --muted: #666666;
-  --line: #cccccc;
-  --box: #eeeeee;
-  --max-width: 60rem;
-  --gutter: 1rem;
+  --black: #011e15;
+  --pink: #ffeaf4;
+  --red: #f24000;
+  --yellow: #febb1a;
+  --white: #fcfcfc;
+  --gray: #d9d4d6;
+
+  --font: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+  /* Type styles: H1 is the name, H2 the "graphic & web design" tagline, Body everything else. */
+  --h2-weight: 400;
+  --h2-tracking: 0.35em;
+  --body-size: 0.8125rem;
+  --body-tracking: 0.2em;
+
+  --sidebar-width: 30%;
+  --bar-height: 3.5rem;
+  --gutter: clamp(1rem, 4vw, 3rem);
 }
 
 *,
@@ -18,119 +33,338 @@
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--white);
+  color: var(--black);
+  font-family: var(--font);
+  font-weight: 100;
   line-height: 1.5;
+}
+
+h1,
+h2,
+p,
+ul {
+  margin: 0;
+}
+
+h1,
+h2 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+ul {
+  padding: 0;
+  list-style: none;
 }
 
 a {
   color: inherit;
+  text-decoration: none;
 }
 
-.container {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 0 var(--gutter);
+a:hover,
+a:focus-visible {
+  color: var(--red);
+}
+
+:focus-visible {
+  outline: 2px solid var(--black);
+  outline-offset: 3px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .skip-link {
   position: absolute;
   left: -9999px;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  background: var(--white);
 }
 
 .skip-link:focus {
-  left: var(--gutter);
-  top: var(--gutter);
-  background: var(--bg);
-  padding: 0.5rem;
+  left: 1rem;
+  top: 1rem;
 }
 
-/* Header */
+/* Sidebar: fixed on the left; the tagline gives way to the menu on hover. */
 
-.site-header {
-  border-bottom: 1px solid var(--line);
-}
-
-.site-header .container {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-}
-
-.site-name {
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.site-header ul {
-  display: flex;
-  gap: 1.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Sections */
-
-main section {
-  padding-top: 3rem;
-  padding-bottom: 3rem;
-}
-
-.hero h1 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  line-height: 1.1;
-}
-
-.lede {
-  max-width: 40rem;
-  color: var(--muted);
-  font-size: 1.125rem;
-}
-
-/* Project grid */
-
-.project-grid {
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 2rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  place-items: center;
+  background: var(--pink);
+  z-index: 5;
 }
 
-.project h3 {
-  margin: 0.75rem 0 0.25rem;
+.tagline,
+.menu {
+  grid-area: 1 / 1;
+  transition: opacity 0.2s;
 }
 
-.project p {
-  margin: 0;
-  color: var(--muted);
+.tagline {
+  font-size: 1.25rem;
+  font-weight: var(--h2-weight);
+  letter-spacing: var(--h2-tracking);
+  white-space: nowrap;
+  transform: rotate(90deg);
+}
+
+.menu {
+  padding: 1.25rem;
+  font-size: var(--body-size);
+  letter-spacing: var(--body-tracking);
+}
+
+.menu > ul {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.menu ul ul {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.menu-open,
+.menu-close {
+  display: none;
+}
+
+/* Only hide the menu where hovering is possible; touch screens always see it. */
+@media (hover: hover) and (min-width: 50.001em) {
+  .menu {
+    opacity: 0;
+  }
+
+  .sidebar:hover .tagline,
+  .sidebar:focus-within .tagline {
+    opacity: 0;
+  }
+
+  .sidebar:hover .menu,
+  .sidebar:focus-within .menu {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) and (min-width: 50.001em) {
+  .tagline {
+    display: none;
+  }
+}
+
+/* Main column */
+
+main {
+  margin-left: var(--sidebar-width);
+}
+
+/* One view at a time: the name by default, or whichever section is targeted. */
+
+.project,
+.contact {
+  display: none;
+}
+
+.project:target {
+  display: block;
+}
+
+.contact:target {
+  display: grid;
+}
+
+main:has(:target) .hero {
+  display: none;
+}
+
+.hero {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  background: var(--red);
+  container-type: inline-size;
+  overflow: hidden;
+}
+
+.name {
+  font-size: 22cqi;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--white);
+  text-shadow: 0.04em 0.04em var(--black);
+}
+
+/* Projects */
+
+.project {
+  padding: var(--gutter) 0;
+}
+
+.project h2 {
+  padding: 0 var(--gutter) var(--gutter);
+  font-size: var(--body-size);
+  letter-spacing: var(--body-tracking);
+  text-align: center;
+}
+
+.gallery {
+  display: grid;
+  gap: clamp(1.5rem, 5vw, 3rem);
+}
+
+.project--grid .gallery {
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  align-items: start;
+  gap: 1rem;
+  padding: 0 var(--gutter);
 }
 
 .placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  aspect-ratio: 4 / 3;
-  background: var(--box);
-  border: 1px dashed var(--line);
-  color: var(--muted);
-  font-size: 0.875rem;
-  text-transform: uppercase;
+  aspect-ratio: var(--ratio, 4 / 3);
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.5px), var(--white) 50%, transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--white) 50%, transparent calc(50% + 0.5px)),
+    var(--gray);
+}
+
+.blurb {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  padding: 0 var(--gutter);
+  text-align: center;
+}
+
+.blurb p {
+  max-width: 50rem;
+}
+
+.blurb-small {
+  font-size: clamp(0.8rem, 1.6vw, 1.125rem);
   letter-spacing: 0.1em;
 }
 
-/* Footer */
+.blurb-large {
+  font-size: clamp(1.2rem, 3vw, 2.2rem);
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+  color: var(--red);
+}
 
-.site-footer {
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.875rem;
+.blurb a {
+  font-style: italic;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Contact */
+
+.contact {
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 2rem;
+  padding: var(--gutter);
+  background: var(--red);
+  text-align: center;
+}
+
+.contact-lede {
+  max-width: 36rem;
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+}
+
+.contact-email {
+  font-size: clamp(1rem, 2vw, 1.45rem);
+  letter-spacing: 0.15em;
+  color: var(--white);
+  text-shadow: 2px 2px var(--black);
+  overflow-wrap: anywhere;
+}
+
+.contact-resume {
+  letter-spacing: 0.15em;
+}
+
+.contact a:hover,
+.contact a:focus-visible {
+  color: inherit;
+  font-style: italic;
+}
+
+/* Small screens: yellow bar along the bottom opens a full-screen menu. */
+
+@media (max-width: 50em) {
+  .sidebar {
+    inset: auto 0 0 0;
+    width: 100%;
+    height: var(--bar-height);
+    background: var(--yellow);
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .menu-open {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: var(--h2-weight);
+    letter-spacing: var(--h2-tracking);
+    text-align: center;
+  }
+
+  .menu {
+    display: none;
+  }
+
+  .menu:target {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--pink);
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .menu-close {
+    display: block;
+    position: absolute;
+    top: 1rem;
+    right: 1.25rem;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  main {
+    margin-left: 0;
+    padding-bottom: var(--bar-height);
+  }
+
+  .hero {
+    height: calc(100vh - var(--bar-height));
+    height: calc(100dvh - var(--bar-height));
+  }
+
+  .contact {
+    min-height: calc(100vh - var(--bar-height));
+  }
 }
