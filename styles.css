@@ -1,24 +1,25 @@
 /*
-  Build 2: neutral wireframe foundation.
+  Portfolio wireframe.
   Small screens get one stacked column (sidebar, then content).
   From 50em up, the sidebar is fixed on the left and main sits to its right.
 */
 
 :root {
   --black: #011e15;
-  --pink: #ffeaf4;
-  --red: #f24000;
-  --yellow: #febb1a;
+  --pure-black: #000000;
+  --off-black: #111111;
+  --green: #03f900;
   --white: #fcfcfc;
-  --gray: #d9d4d6;
+  --gray: #ececec;
 
   --font: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
-  /* Type styles: H1 is the name, H2 the "graphic & web design" tagline, Body everything else. */
+  /* Type styles: H1 is the homepage title, H2 the left section and project titles, Body everything else. */
+  --h2-size: 1.25rem;
   --h2-weight: 400;
-  --h2-tracking: 0.35em;
+  --h2-tracking: 0;
   --body-size: 0.8125rem;
-  --body-tracking: 0.2em;
+  --body-tracking: 0;
 
   --sidebar-width: 30%;
   --gutter: clamp(1rem, 4vw, 3rem);
@@ -44,14 +45,12 @@ body {
 }
 
 h1,
-h2,
 p,
 ul {
   margin: 0;
 }
 
-h1,
-h2 {
+h1 {
   font-size: inherit;
   font-weight: inherit;
 }
@@ -66,17 +65,20 @@ a {
   text-decoration: none;
 }
 
-/* Underline as well as color, so hover and the current page don't rely on color alone. */
+/* Hover and keyboard focus: green and italic. */
 a:hover,
-a:focus-visible,
+a:focus-visible {
+  color: var(--green);
+  font-style: italic;
+}
+
+/* The current page: green. */
 a[aria-current="page"] {
-  color: var(--red);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  color: var(--green);
 }
 
 :focus-visible {
-  outline: 2px solid var(--black);
+  outline: 2px solid currentColor;
   outline-offset: 3px;
 }
 
@@ -100,31 +102,35 @@ a[aria-current="page"] {
 .skip-link:focus {
   left: 1rem;
   top: 1rem;
+  color: var(--black);
 }
 
-/* Sidebar */
+/* H2 type style */
 
-.sidebar {
-  display: grid;
-  gap: 2rem;
-  padding: var(--gutter);
-  background: var(--pink);
-}
-
-.tagline {
-  font-size: 1.25rem;
+.sidebar,
+.page-title {
+  font-size: var(--h2-size);
   font-weight: var(--h2-weight);
   letter-spacing: var(--h2-tracking);
 }
 
-.menu > ul {
-  display: grid;
-  gap: 1.5rem;
+/* Sidebar: name at the top, projects in the middle, resume at the bottom. */
+
+.sidebar {
+  padding: var(--gutter);
+  background: var(--pure-black);
+  color: var(--white);
 }
 
-.menu ul ul {
+.menu {
+  display: grid;
+  gap: 2rem;
+}
+
+.project-list {
   display: grid;
   gap: 0.9rem;
+  font-weight: 100;
 }
 
 /* Page content */
@@ -136,8 +142,8 @@ main {
 }
 
 .home,
-.contact {
-  background: var(--red);
+.resume {
+  background: var(--off-black);
 }
 
 .home {
@@ -145,15 +151,17 @@ main {
   place-items: center;
 }
 
-.name {
-  font-size: clamp(3rem, 15vw, 14rem);
+/* Sized so a line of up to 11 characters fits the block at any width. */
+.home-title {
+  font-size: clamp(2rem, 8.5vw, 12rem);
+  font-weight: 100;
   line-height: 1;
-  letter-spacing: 0;
+  text-align: center;
   color: var(--white);
-  text-shadow: 0.04em 0.04em var(--black);
 }
 
-.contact {
+.resume {
+  color: var(--white);
   display: grid;
   place-content: center;
   justify-items: center;
@@ -161,22 +169,21 @@ main {
   text-align: center;
 }
 
-.contact-lede {
+.resume-lede {
   max-width: 36rem;
   font-size: clamp(1.4rem, 3vw, 2.2rem);
   line-height: 1.2;
 }
 
-.contact-email {
+.resume-email {
   font-size: clamp(1rem, 2vw, 1.45rem);
-  color: var(--white);
-  text-shadow: 2px 2px var(--black);
+  color: var(--green);
   overflow-wrap: anywhere;
 }
 
-/* Red would vanish on the red background, so contact links keep their color and rely on the underline. */
-.contact a:hover,
-.contact a:focus-visible {
+/* Resume page links keep their color on hover. */
+.resume a:hover,
+.resume a:focus-visible {
   color: inherit;
 }
 
@@ -190,55 +197,32 @@ main {
   background: var(--gray);
 }
 
-/* Wide screens: fixed sidebar on the left, tagline gives way to the menu. */
+.project-info {
+  max-width: 60ch;
+  margin-top: var(--gutter);
+}
+
+/* Wide screens: fixed sidebar on the left, main content to its right. */
 
 @media (min-width: 50em) {
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
+    display: grid;
     width: var(--sidebar-width);
     overflow-y: auto;
-    gap: 0;
   }
 
-  /* Tagline and menu share one grid cell; auto margins center them but
-     collapse to zero when the menu is taller than the window, so it scrolls. */
-  .tagline,
+  /* Rows: name, flexible middle, resume. The project list centers in the middle row. */
   .menu {
-    grid-area: 1 / 1;
-    margin: auto;
-    transition: opacity 0.2s;
+    grid-template-rows: auto 1fr auto;
   }
 
-  .tagline {
-    writing-mode: vertical-rl;
-    white-space: nowrap;
+  .project-list {
+    align-self: center;
   }
 
   main {
     margin-left: var(--sidebar-width);
-  }
-
-  @media (hover: hover) {
-    .menu {
-      opacity: 0;
-    }
-
-    .sidebar:hover .tagline,
-    .sidebar:focus-within .tagline {
-      opacity: 0;
-    }
-
-    .sidebar:hover .menu,
-    .sidebar:focus-within .menu {
-      opacity: 1;
-    }
-  }
-
-  /* Touch screens can't hover, so they always see the menu. */
-  @media (hover: none) {
-    .tagline {
-      display: none;
-    }
   }
 }
