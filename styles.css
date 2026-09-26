@@ -105,15 +105,6 @@ a:focus-visible {
   color: var(--black);
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .skip-link {
   position: absolute;
   left: -9999px;
@@ -126,10 +117,6 @@ a:focus-visible {
 .skip-link:focus {
   left: 1rem;
   top: 1rem;
-}
-
-.dim {
-  color: var(--white);
 }
 
 /* The blinking block cursor. */
@@ -194,11 +181,12 @@ body::after {
   display: flex;
   align-items: baseline;
   margin-top: 1.5em;
-  opacity: 0;
+  visibility: hidden;
 }
 
+/* Hidden (not just transparent) until it appears, so it can't be tabbed to and submitted early. */
 .boot-login.is-visible {
-  opacity: 1;
+  visibility: visible;
 }
 
 .boot-login label {
@@ -345,6 +333,11 @@ body::after {
   color: var(--gray);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.window:focus {
+  /* The window gets focus after the boot screen and from the skip link; no outline around the whole window. */
+  outline: none;
 }
 
 .window-body {

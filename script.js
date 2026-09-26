@@ -122,7 +122,7 @@ const commands = {
     "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot\n" +
     "places:   project-1, project-2, project-3, resume, home",
   ls: () => "projects/project-1/  projects/project-2/  projects/project-3/  resume.txt",
-  cd: goTo,
+  cd: (name) => goTo(name || "~"),
   open: goTo,
   cat: goTo,
   whoami: () => "carrie markusen. physical + digital designer.",
