@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#000"/>
+  <!-- colon -->
+  <rect x="8" y="9" width="4" height="4" fill="#03f900"/>
+  <rect x="8" y="19" width="4" height="4" fill="#03f900"/>
+  <!-- closing parenthesis -->
+  <path d="M17 5 Q26 16 17 27" fill="none" stroke="#03f900" stroke-width="3.5" stroke-linecap="square"/>
+</svg>

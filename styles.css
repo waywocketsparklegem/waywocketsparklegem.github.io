@@ -1,28 +1,35 @@
 /*
-  Portfolio wireframe.
-  Small screens get one stacked column (sidebar, then content).
-  From 50em up, the sidebar is fixed on the left and main sits to its right.
+  Carrie's brain: a portfolio dressed as an old terminal.
+  Layout: file tree (sidebar), a content window (main), and a status bar with a command line.
+  Small screens stack them. From 50em up, the tree sits on the left and only the window scrolls.
 */
 
 :root {
-  --black: #011e15;
-  --pure-black: #000000;
-  --off-black: #111111;
-  --green: #03f900;
+  /* Only three colors: black, white and green. */
+  --black: #000000;
   --white: #fcfcfc;
-  --gray: #ececec;
+  --green: #03f900;
+
+  /* Gray, for data text only (the title bar path). It matches how the white [ read only ] and uptime
+     look once the vignette darkens the corners. */
+  --gray: #a8a8a8;
+
+  /* Placeholder images are one tint lighter than black (images/placeholder.svg uses the same value). */
+  --placeholder: #111111;
 
   --font: "JetBrains Mono", ui-monospace, Menlo, monospace;
 
-  /* Type styles: H1 is the homepage title, H2 the left section and project titles, Body everything else. */
+  /* Type styles: Display is the big text, H2 titles, Body everything else. All Thin. */
+  --display-size: clamp(2.5rem, 7vw, 7rem);
   --h2-size: 1.25rem;
-  --h2-weight: 400;
-  --h2-tracking: 0;
-  --body-size: 0.8125rem;
-  --body-tracking: 0;
+  --body-size: 0.875rem;
 
   --sidebar-width: 30%;
-  --gutter: clamp(1rem, 4vw, 3rem);
+  --gutter: clamp(1rem, 3vw, 2.5rem);
+  --glow: 0 0 6px rgba(3, 249, 0, 0.45);
+
+  /* Weight of the green rules. 0.5px is a hairline on Retina screens and rounds up to 1px elsewhere. */
+  --rule: 0.5px;
 }
 
 /* Base */
@@ -33,25 +40,34 @@
   box-sizing: border-box;
 }
 
+html {
+  background: var(--black);
+}
+
 body {
   margin: 0;
-  background: var(--white);
-  color: var(--black);
+  background: var(--black);
+  color: var(--green);
   font-family: var(--font);
   font-size: var(--body-size);
   font-weight: 100;
-  letter-spacing: var(--body-tracking);
-  line-height: 1.5;
+  line-height: 1.6;
+  text-shadow: var(--glow);
 }
 
 h1,
+h2,
 p,
-ul {
+ul,
+dl,
+dd,
+figure {
   margin: 0;
 }
 
-h1 {
-  font-size: inherit;
+h1,
+h2 {
+  font-size: var(--h2-size);
   font-weight: inherit;
 }
 
@@ -65,21 +81,28 @@ a {
   text-decoration: none;
 }
 
-/* Hover and keyboard focus: green and italic. */
-a:hover,
-a:focus-visible {
-  color: var(--green);
-  font-style: italic;
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
-/* The current page: green. */
-a[aria-current="page"] {
-  color: var(--green);
+/* Hover and keyboard focus: inverted, like selected text in a terminal. */
+a:hover,
+a:focus-visible {
+  background: var(--green);
+  color: var(--black);
+  text-shadow: none;
 }
 
 :focus-visible {
-  outline: 2px solid currentColor;
+  outline: 1px dashed var(--green);
   outline-offset: 3px;
+}
+
+::selection {
+  background: var(--green);
+  color: var(--black);
 }
 
 .visually-hidden {
@@ -94,135 +117,454 @@ a[aria-current="page"] {
 .skip-link {
   position: absolute;
   left: -9999px;
-  z-index: 10;
+  z-index: 30;
   padding: 0.5rem 1rem;
-  background: var(--white);
+  background: var(--green);
+  color: var(--black);
 }
 
 .skip-link:focus {
   left: 1rem;
   top: 1rem;
-  color: var(--black);
 }
 
-/* H2 type style */
+.dim {
+  color: var(--white);
+}
 
-.sidebar,
-.page-title {
+/* The blinking block cursor. */
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  margin-left: 0.1em;
+  vertical-align: text-bottom;
+  background: var(--green);
+  box-shadow: var(--glow);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* CRT effect: scanlines and a dark vignette over everything. Clicks pass through. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.25) 2px 3px),
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+/* ---------- Boot screen (home page only) ---------- */
+
+.boot {
+  display: none;
+}
+
+/* script in <head> adds .booting on the first visit of a session. */
+.booting .boot {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--gutter);
+  background: var(--black);
   font-size: var(--h2-size);
-  font-weight: var(--h2-weight);
-  letter-spacing: var(--h2-tracking);
 }
 
-/* Sidebar: name at the top, projects in the middle, resume at the bottom. */
+.booting .screen {
+  visibility: hidden;
+}
+
+.boot-inner {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+/* The password prompt. It fades in once the welcome line has typed. */
+.boot-login {
+  display: flex;
+  align-items: baseline;
+  margin-top: 1.5em;
+  opacity: 0;
+}
+
+.boot-login.is-visible {
+  opacity: 1;
+}
+
+.boot-login label {
+  margin-right: 1ch;
+}
+
+/* The field has no box and no native caret; the blinking block cursor after it stands in. */
+.boot-login input {
+  width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green);
+  font: inherit;
+  text-shadow: inherit;
+  caret-color: transparent;
+  outline: none;
+}
+
+.boot-message {
+  min-height: 1.6em;
+  margin-top: 0.5em;
+  color: var(--white);
+}
+
+.boot-log {
+  margin-top: 1.5em;
+  font-size: var(--body-size);
+}
+
+/* The screen switching on: a bright line that opens up. */
+.powering-on {
+  animation: power-on 0.6s ease-out;
+}
+
+@keyframes power-on {
+  0% { transform: scaleY(0.005); filter: brightness(3); }
+  40% { transform: scaleY(0.005); filter: brightness(3); }
+  100% { transform: scaleY(1); filter: brightness(1); }
+}
+
+/* ---------- Screen layout ---------- */
+
+.screen {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* ---------- Sidebar: the file tree ---------- */
 
 .sidebar {
   padding: var(--gutter);
-  background: var(--pure-black);
+  border-bottom: var(--rule) solid var(--green);
+}
+
+.sidebar-label {
+  margin-bottom: 1rem;
+  color: var(--white);
+  font-weight: 400;
+}
+
+.tree-root {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: var(--h2-size);
+}
+
+/* Tree branches are drawn with borders: a vertical line on the list, a short tick on each item. */
+.tree ul {
+  margin-left: 0.5rem;
+}
+
+.tree li {
+  position: relative;
+  padding: 0.15rem 0 0.15rem 1.5rem;
+  border-left: 1px solid var(--white);
+}
+
+.tree li:last-child {
+  border-left-color: transparent;
+}
+
+.tree li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 1rem;
+  height: 0.95rem;
+  border-left: 1px solid var(--white);
+  border-bottom: 1px solid var(--white);
+}
+
+.tree-dir {
   color: var(--white);
 }
 
-.menu {
-  display: grid;
-  gap: 2rem;
+/* The current page: a pointer before it and white text. */
+.tree a[aria-current="page"] {
+  color: var(--white);
 }
 
-.project-list {
-  display: grid;
-  gap: 0.9rem;
-  font-weight: 100;
+.tree a[aria-current="page"]::after {
+  content: " <";
+  color: var(--green);
 }
 
-/* Page content */
+.tree a[aria-current="page"]:hover,
+.tree a[aria-current="page"]:focus-visible {
+  color: var(--black);
+}
 
-main {
-  min-height: 100vh;
-  min-height: 100dvh;
+.sidebar-meta {
+  margin-top: 2rem;
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+/* ---------- Main: the content window ---------- */
+
+.window {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.titlebar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem var(--gutter);
+  border-bottom: var(--rule) solid var(--green);
+  color: var(--white);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.titlebar-path {
+  color: var(--gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.window-body {
+  display: grid;
+  gap: 2.5rem;
+  align-content: start;
   padding: var(--gutter);
 }
 
-.home,
-.resume {
-  background: var(--off-black);
+/* A command and what it printed. */
+.cmd {
+  color: var(--white);
 }
 
-.home {
-  display: grid;
-  place-items: center;
+.cmd::before {
+  content: "> ";
+  color: var(--white);
 }
 
-/* Sized so a line of up to 11 characters fits the block at any width. */
-.home-title {
-  font-size: clamp(2rem, 8.5vw, 12rem);
+.output {
+  margin-top: 0.75rem;
+}
+
+/* A word to type or a key link, picked out in white. */
+.cmd-word {
+  color: var(--white);
+}
+
+.display {
+  font-size: var(--display-size);
   font-weight: 100;
   line-height: 1;
-  text-align: center;
-  color: var(--white);
 }
 
-.resume {
-  color: var(--white);
+.lede {
+  max-width: 60ch;
+}
+
+/* Directory listing (home page): each row is a link. */
+.listing {
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 2rem;
-  text-align: center;
+  max-width: 48rem;
 }
 
-.resume-lede {
-  max-width: 36rem;
-  font-size: clamp(1.4rem, 3vw, 2.2rem);
-  line-height: 1.2;
+.listing a {
+  display: grid;
+  grid-template-columns: 7rem 1fr auto;
+  gap: 1rem;
+  padding: 0.2rem 0.4rem;
+  margin: 0 -0.4rem;
 }
 
-.resume-email {
-  font-size: clamp(1rem, 2vw, 1.45rem);
-  color: var(--green);
-  overflow-wrap: anywhere;
+.listing a > span:last-child {
+  text-align: right;
 }
 
-/* Resume page links keep their color on hover. */
-.resume a:hover,
-.resume a:focus-visible {
+/* Key and value pairs, like `role: designer`. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1.5rem;
+  max-width: 48rem;
+}
+
+.facts dt {
+  color: var(--white);
+}
+
+/* ---------- Images ---------- */
+
+.shot {
+  border: var(--rule) solid var(--green);
+  background: var(--placeholder);
+}
+
+.shot img {
+  width: 100%;
+}
+
+.shot figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  border-top: var(--rule) solid var(--green);
+  color: var(--white);
+  font-size: 0.75rem;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+/* Linked thumbnails: no inverted hover; the frame turns white instead. */
+.gallery a:hover,
+.gallery a:focus-visible {
+  background: none;
   color: inherit;
 }
 
-.page-title {
-  margin-bottom: var(--gutter);
-  text-align: center;
+.gallery a:hover .shot,
+.gallery a:focus-visible .shot {
+  border-color: var(--green);
 }
 
-.placeholder {
-  aspect-ratio: 4 / 3;
-  background: var(--gray);
+/* Previous / next project links. */
+.pager {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: var(--rule) dashed var(--green);
 }
 
-.project-info {
-  max-width: 60ch;
-  margin-top: var(--gutter);
+/* ---------- Status bar with the command line ---------- */
+
+.statusbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1.5rem;
+  padding: 0.5rem var(--gutter);
+  border-top: var(--rule) solid var(--green);
+  background: var(--black);
+  font-size: 0.75rem;
 }
 
-/* Wide screens: fixed sidebar on the left, main content to its right. */
+.cli {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cli label {
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.cli input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--white);
+  font: inherit;
+  caret-color: var(--green);
+  outline: none;
+}
+
+.cli input::placeholder {
+  color: var(--green);
+}
+
+/* The command line's reply appears just above the status bar. */
+.cli-output {
+  flex-basis: 100%;
+  order: -1;
+  white-space: pre-wrap;
+}
+
+.cli-output:empty {
+  display: none;
+}
+
+.status {
+  display: flex;
+  gap: 1.5rem;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+/* ---------- Wide screens: tree on the left, window on the right, status bar along the bottom ---------- */
 
 @media (min-width: 50em) {
+  .screen {
+    height: 100vh;
+    height: 100dvh;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    grid-template-rows: 1fr auto;
+  }
+
   .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    display: grid;
-    width: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    border-bottom: 0;
+    border-right: var(--rule) solid var(--green);
     overflow-y: auto;
   }
 
-  /* Rows: name, flexible middle, resume. The project list centers in the middle row. */
-  .menu {
-    grid-template-rows: auto 1fr auto;
+  .sidebar-meta {
+    margin-top: auto;
   }
 
-  .project-list {
-    align-self: center;
+  .window {
+    overflow-y: auto;
   }
 
-  main {
-    margin-left: var(--sidebar-width);
+  .titlebar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--black);
+  }
+
+  .statusbar {
+    grid-column: 1 / -1;
+  }
+}
+
+/* No power-on animation for people who ask for less motion. Typing and the cursor blink still run. */
+@media (prefers-reduced-motion: reduce) {
+  .powering-on {
+    animation: none;
   }
 }

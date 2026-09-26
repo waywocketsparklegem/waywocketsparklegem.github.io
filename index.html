@@ -3,30 +3,126 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>carrie markusen</title>
+    <title>carrie's brain</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,400;1,100;1,400&amp;display=swap">
     <link rel="stylesheet" href="styles.css">
+    <!-- Show the boot screen once per visit. After that, the home page opens straight to the desktop. -->
+    <script>
+      try {
+        if (!sessionStorage.getItem("booted")) document.documentElement.classList.add("booting");
+      } catch (e) {
+        document.documentElement.classList.add("booting");
+      }
+    </script>
+    <script src="script.js" defer></script>
   </head>
   <body>
+    <!-- Boot screen: script.js types the welcome line, then asks for the password. -->
+    <div class="boot" id="boot">
+      <div class="boot-inner">
+        <p><span id="boot-text" data-text="welcome to carrie's brain"></span><span class="cursor" id="boot-cursor"></span></p>
+        <form class="boot-login" id="boot-login" autocomplete="off">
+          <label for="boot-password">&gt; enter password:</label>
+          <input id="boot-password" type="text" autocomplete="off" spellcheck="false" autocapitalize="off">
+        </form>
+        <p class="boot-message" id="boot-message" aria-live="assertive"></p>
+        <div class="boot-log" id="boot-log" aria-hidden="true"></div>
+      </div>
+    </div>
+
     <a class="skip-link" href="#main">skip to content</a>
 
-    <!-- Shared header: identical on every page except which link has aria-current="page". Change it in all .html files. -->
-    <header class="sidebar">
-      <nav class="menu" aria-label="primary">
-        <a class="site-name" aria-current="page" href="index.html">carrie markusen</a>
-        <ul class="project-list">
-          <li><a href="project-1.html">project 1</a></li>
-          <li><a href="project-2.html">project 2</a></li>
-          <li><a href="project-3.html">project 3</a></li>
-        </ul>
-        <a class="resume-link" href="resume.html">:)<span class="visually-hidden"> resume</span></a>
-      </nav>
-    </header>
+    <div class="screen" id="screen">
+      <!-- Shared sidebar: identical on every page except which link has aria-current="page". Change it in all .html files. -->
+      <header class="sidebar">
+        <p class="sidebar-label" aria-hidden="true">:)</p>
+        <nav class="tree" aria-label="primary">
+          <a class="tree-root" aria-current="page" href="index.html">~/carries-brain</a>
+          <ul>
+            <li>
+              <span class="tree-dir">projects/</span>
+              <ul>
+                <li><a href="project-1.html">project-1/</a></li>
+                <li><a href="project-2.html">project-2/</a></li>
+                <li><a href="project-3.html">project-3/</a></li>
+              </ul>
+            </li>
+            <li><a href="resume.html">resume.txt</a></li>
+          </ul>
+        </nav>
+        <p class="sidebar-meta">carrie markusen<br>physical + digital design</p>
+      </header>
 
-    <main id="main" class="home">
-      <h1 class="home-title">what<br>will<br>this be</h1>
-    </main>
+      <main id="main" class="window" tabindex="-1">
+        <div class="titlebar">
+          <span class="titlebar-path">~/carries-brain/readme.txt</span>
+          <span>[ read only ]</span>
+        </div>
+
+        <div class="window-body">
+          <section>
+            <p class="cmd">cat thoughts.txt</p>
+            <h1 class="output display">what<br>will<br>this be</h1>
+          </section>
+
+          <section>
+            <p class="cmd">whoami</p>
+            <p class="output lede">carrie markusen. placeholder for a short intro: what you make, who you make it for, and what you're curious about right now.</p>
+          </section>
+
+          <section>
+            <p class="cmd">ls -l projects/</p>
+            <div class="output listing">
+              <a href="project-1.html"><span>drwxr-xr-x</span><span>project-1/</span><span>2026</span></a>
+              <a href="project-2.html"><span>drwxr-xr-x</span><span>project-2/</span><span>2025</span></a>
+              <a href="project-3.html"><span>drwxr-xr-x</span><span>project-3/</span><span>2024</span></a>
+              <a href="resume.html"><span>-rw-r--r--</span><span>resume.txt</span><span>2026</span></a>
+            </div>
+          </section>
+
+          <section>
+            <p class="cmd">open projects/*/cover.jpg</p>
+            <div class="output gallery">
+              <a href="project-1.html">
+                <figure class="shot">
+                  <img src="images/placeholder.svg" width="1600" height="1200" alt="project 1 cover (placeholder)">
+                  <figcaption><span>project-1/cover.jpg</span><span>1600x1200</span></figcaption>
+                </figure>
+              </a>
+              <a href="project-2.html">
+                <figure class="shot">
+                  <img src="images/placeholder.svg" width="1600" height="1200" alt="project 2 cover (placeholder)">
+                  <figcaption><span>project-2/cover.jpg</span><span>1600x1200</span></figcaption>
+                </figure>
+              </a>
+              <a href="project-3.html">
+                <figure class="shot">
+                  <img src="images/placeholder.svg" width="1600" height="1200" alt="project 3 cover (placeholder)">
+                  <figcaption><span>project-3/cover.jpg</span><span>1600x1200</span></figcaption>
+                </figure>
+              </a>
+            </div>
+          </section>
+
+          <section>
+            <p class="cmd">echo $TIP</p>
+            <p class="output">type <span class="cmd-word">help</span> in the command line below to get around by keyboard.</p>
+          </section>
+        </div>
+      </main>
+
+      <!-- Shared status bar: identical on every page. script.js runs the command line and the clock. -->
+      <footer class="statusbar">
+        <form class="cli" id="cli" autocomplete="off">
+          <label for="cli-input">carrie@brain ~&gt;</label>
+          <input id="cli-input" type="text" spellcheck="false" autocapitalize="off" placeholder="type help">
+        </form>
+        <p class="cli-output" id="cli-output" aria-live="polite"></p>
+        <p class="status"><span id="uptime"></span><span id="clock"></span></p>
+      </footer>
+    </div>
   </body>
 </html>
