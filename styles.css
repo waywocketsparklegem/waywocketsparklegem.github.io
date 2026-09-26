@@ -561,3 +561,59 @@ body::after {
     animation: none;
   }
 }
+
+/* ---------- Silly mode (the "silly" command; "too silly" turns it off) ---------- */
+
+/* Rainbows repeat twice across a double-width background, so sliding it by one width loops seamlessly. */
+html.silly {
+  --rainbow: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff,
+    #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  background: var(--rainbow);
+  background-size: 200% 100%;
+  animation: rainbow 30s linear infinite;
+}
+
+html.silly body {
+  background: transparent;
+  text-shadow: none;
+}
+
+/* Every bit of text: Wingdings, filled with a fast rainbow. Boxes that were black go see-through. */
+html.silly body *,
+html.silly body *::before,
+html.silly body *::after {
+  font-family: Wingdings, var(--font);
+  background: var(--rainbow);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  animation: rainbow 2s linear infinite;
+}
+
+/* The command line and its reply stay in JetBrains Mono, so "type too silly" can still be read. */
+html.silly .cli,
+html.silly .cli *,
+html.silly .cli-output {
+  font-family: var(--font);
+}
+
+/* The command line hint can't take a rainbow fill, so it cycles through the colors instead. */
+html.silly .cli input::placeholder {
+  animation: rainbow-color 2s linear infinite;
+}
+
+@keyframes rainbow {
+  from { background-position: 0% 0; }
+  to { background-position: 100% 0; }
+}
+
+@keyframes rainbow-color {
+  0%, 100% { color: #ff0000; }
+  17% { color: #ffff00; }
+  33% { color: #00ff00; }
+  50% { color: #00ffff; }
+  67% { color: #0000ff; }
+  83% { color: #ff00ff; }
+}

@@ -119,7 +119,7 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly\n" +
     "places:   project-1, project-2, project-3, resume, home",
   ls: () => "projects/project-1/  projects/project-2/  projects/project-3/  resume.txt",
   cd: (name) => goTo(name || "~"),
@@ -136,7 +136,16 @@ const commands = {
   },
   sudo: () => "nice try.",
   exit: () => "there is no exit. only more ideas.",
+  silly: () => setSilly(true),
+  "too silly": () => setSilly(false),
 };
+
+// Silly mode: Wingdings and rainbows (styles at the end of styles.css). Lasts until "too silly" or the page changes.
+function setSilly(on) {
+  document.documentElement.classList.toggle("silly", on);
+  document.getElementById("cli-input").placeholder = on ? "type too silly" : "type help";
+  return on ? "silly mode on. type too silly to go back." : "back to normal.";
+}
 
 function setupCli() {
   const form = document.getElementById("cli");
@@ -156,8 +165,9 @@ function setupCli() {
     history.push(line);
     historyIndex = history.length;
 
+    // Two-word commands (like "too silly") are looked up whole first.
     const [name, ...args] = line.split(/\s+/);
-    const command = commands[name.toLowerCase()];
+    const command = commands[line.toLowerCase().replace(/\s+/g, " ")] || commands[name.toLowerCase()];
     output.textContent = command ? command(args.join(" ")) : `command not found: ${name}. try help`;
   });
 

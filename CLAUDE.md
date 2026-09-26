@@ -47,7 +47,7 @@ Home page only: a `<script>` in `<head>` adds `booting` to `<html>` on the first
 
 Carrie's Mac has Reduce motion on. Typing and the cursor blink run for everyone regardless; only the power-on animation is skipped under `prefers-reduced-motion`.
 
-Command line (`script.js`): help, ls, cd/open/cat <place> (a bare `cd` goes home), whoami, pwd, date, clear, reboot, sudo, exit. Places are listed in the `places` array. `/` focuses the command line; up/down arrows recall history.
+Command line (`script.js`): help, ls, cd/open/cat <place> (a bare `cd` goes home), whoami, pwd, date, clear, reboot, sudo, exit. `silly` turns on silly mode (class `silly` on `<html>`): Wingdings everywhere except the command line and its reply, a slow rainbow background and fast rainbow text; the hint changes to "type too silly", and `too silly` turns it off. It isn't saved, so changing page also ends it. Styles are at the end of `styles.css`. Places are listed in the `places` array. `/` focuses the command line; up/down arrows recall history.
 
 Images: `<figure class="shot">` with an `<img>` and a `<figcaption>` (file name, size). Swap `images/placeholder.svg` for real files.
 
