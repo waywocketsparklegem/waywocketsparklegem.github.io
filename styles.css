@@ -564,32 +564,52 @@ body::after {
 
 /* ---------- Silly mode (the "silly" command; "too silly" turns it off) ---------- */
 
-/* Rainbows repeat twice across a double-width background, so sliding it by one width loops seamlessly. */
+/* The background is a rainbow gradient that slowly slides from right to left. The rainbow repeats twice
+   across a double-width background, so sliding it by one width loops seamlessly. */
 html.silly {
-  --rainbow: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff,
+  background: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff,
     #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-  background: var(--rainbow);
   background-size: 200% 100%;
-  animation: rainbow 30s linear infinite;
+  animation: rainbow-slide 30s linear infinite;
 }
 
+/* The text is one color that cycles through the rainbow every 8 seconds. Everything inside takes it on, lines included. */
 html.silly body {
   background: transparent;
-  text-shadow: none;
+  animation: rainbow-text 8s linear infinite;
 }
 
-/* Every bit of text: Wingdings, filled with a fast rainbow. Boxes that were black go see-through. */
+/* No terminal effects: no green glow, and no scanlines or vignette. */
+html.silly body::after {
+  display: none;
+}
+
+/* Every bit of text in Wingdings, in the body's color. Boxes that were black go see-through. */
 html.silly body *,
 html.silly body *::before,
 html.silly body *::after {
   font-family: Wingdings, var(--font);
-  background: var(--rainbow);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: inherit;
+  background-color: transparent;
+  border-color: currentColor;
+  caret-color: currentColor;
   text-shadow: none;
-  animation: rainbow 2s linear infinite;
+}
+
+/* These have their own colors in the terminal styles, set more strongly; bring them into line. */
+html.silly .tree a[aria-current="page"],
+html.silly .tree a[aria-current="page"]::after,
+html.silly .gallery .shot {
+  color: inherit;
+  border-color: currentColor;
+}
+
+/* Placeholder images are one color that slowly cycles through the rainbow. The color is the image's
+   background; the flat placeholder picture is pushed out of its box so the color shows.
+   Real images are left alone. */
+html.silly .shot img[src$="placeholder.svg"] {
+  object-position: -200vw 0;
+  animation: rainbow-background 30s linear infinite;
 }
 
 /* The command line and its reply stay in JetBrains Mono, so "type too silly" can still be read. */
@@ -599,21 +619,29 @@ html.silly .cli-output {
   font-family: var(--font);
 }
 
-/* The command line hint can't take a rainbow fill, so it cycles through the colors instead. */
 html.silly .cli input::placeholder {
-  animation: rainbow-color 2s linear infinite;
+  color: inherit;
 }
 
-@keyframes rainbow {
+@keyframes rainbow-slide {
   from { background-position: 0% 0; }
   to { background-position: 100% 0; }
 }
 
-@keyframes rainbow-color {
+@keyframes rainbow-text {
   0%, 100% { color: #ff0000; }
   17% { color: #ffff00; }
   33% { color: #00ff00; }
   50% { color: #00ffff; }
   67% { color: #0000ff; }
   83% { color: #ff00ff; }
+}
+
+@keyframes rainbow-background {
+  0%, 100% { background-color: #ff0000; }
+  17% { background-color: #ffff00; }
+  33% { background-color: #00ff00; }
+  50% { background-color: #00ffff; }
+  67% { background-color: #0000ff; }
+  83% { background-color: #ff00ff; }
 }

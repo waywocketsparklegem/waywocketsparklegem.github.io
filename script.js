@@ -119,7 +119,7 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>\n" +
     "places:   project-1, project-2, project-3, resume, home",
   ls: () => "projects/project-1/  projects/project-2/  projects/project-3/  resume.txt",
   cd: (name) => goTo(name || "~"),
@@ -138,13 +138,58 @@ const commands = {
   exit: () => "there is no exit. only more ideas.",
   silly: () => setSilly(true),
   "too silly": () => setSilly(false),
+  cowsay: (words) => {
+    nextHint = "type so cute";
+    return cowsay(words || "moo.");
+  },
+  "so cute": () => ":)",
 };
+
+// A command can set this to suggest what to type next. Otherwise the hint goes back to "type help".
+let nextHint = "";
 
 // Silly mode: Wingdings and rainbows (styles at the end of styles.css). Lasts until "too silly" or the page changes.
 function setSilly(on) {
   document.documentElement.classList.toggle("silly", on);
-  document.getElementById("cli-input").placeholder = on ? "type too silly" : "type help";
-  return on ? "silly mode on. type too silly to go back." : "back to normal.";
+  return on ? cowsay("silly mode on.") : "back to normal.";
+}
+
+// cowsay: a cow says your words in a speech bubble. Lines wrap at 30 characters so the cow fits on a phone.
+function cowsay(words) {
+  const width = 30;
+  const lines = [];
+  let line = "";
+  // Words longer than a whole line are cut into line-sized pieces.
+  const pieces = words.split(" ").flatMap((word) => word.match(new RegExp(`.{1,${width}}`, "g")));
+  for (const word of pieces) {
+    if (line && line.length + word.length + 1 > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  lines.push(line);
+
+  const longest = Math.max(...lines.map((l) => l.length));
+  const bubble = lines.map((l, i) => {
+    const [left, right] =
+      lines.length === 1 ? ["<", ">"] :
+      i === 0 ? ["/", "\\"] :
+      i === lines.length - 1 ? ["\\", "/"] : ["|", "|"];
+    return `${left} ${l.padEnd(longest)} ${right}`;
+  });
+
+  return [
+    ` ${"_".repeat(longest + 2)}`,
+    ...bubble,
+    ` ${"-".repeat(longest + 2)}`,
+    "        \\   ^__^",
+    "         \\  (oo)\\_______",
+    "            (__)\\       )\\/\\",
+    "                ||----w |",
+    "                ||     ||",
+  ].join("\n");
 }
 
 function setupCli() {
@@ -169,6 +214,11 @@ function setupCli() {
     const [name, ...args] = line.split(/\s+/);
     const command = commands[line.toLowerCase().replace(/\s+/g, " ")] || commands[name.toLowerCase()];
     output.textContent = command ? command(args.join(" ")) : `command not found: ${name}. try help`;
+
+    // Show the suggested next command, or the usual hint.
+    const silly = document.documentElement.classList.contains("silly");
+    input.placeholder = nextHint || (silly ? "type too silly" : "type help");
+    nextHint = "";
   });
 
   // Up and down arrows walk through earlier commands, like a real shell.
