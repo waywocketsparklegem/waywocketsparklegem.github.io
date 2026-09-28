@@ -696,3 +696,53 @@ html.silly .cli input::placeholder {
   flex: 1;
   min-height: 70vh;
 }
+
+/* ---------- Sky mode (the "sky" command; "normal" turns it off) ---------- */
+
+/* sky.js puts one canvas behind everything: it paints the sky and clouds across the whole screen.
+   Clicks pass through it. */
+.sky-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+/* Everything green turns bright red-orange: text, rules, the cursor, hovers and the text glow. */
+html.sky {
+  --green: #ff4500;
+  --glow: 0 0 6px rgba(255, 69, 0, 0.45);
+}
+
+/* Everything that was black goes see-through, so the sky shows. */
+html.sky body,
+html.sky .statusbar,
+html.sky .titlebar {
+  background: transparent;
+}
+
+/* The only line left is the one along the top of the status bar, across the whole bottom.
+   The sidebar's edge, the title bar's underline and the file tree's branches go. */
+html.sky .sidebar,
+html.sky .titlebar,
+html.sky .tree li,
+html.sky .tree li::before {
+  border: 0;
+}
+
+/* No CRT effect: no scanlines or vignette over the sky. */
+html.sky body::after {
+  display: none;
+}
+
+/* The clouds take the window's place. Its content is only hidden, and comes back with "normal".
+   The dream's "drag to grow" hint goes too, since the dream is paused, and so does the
+   "~/carries-brain/dream.exe" path in its title bar (home and dream.html, where the path is the h1). */
+html.sky .window-body,
+html.sky .dream-canvas,
+html.sky #dream-hint,
+html.sky h1.titlebar-path {
+  visibility: hidden;
+}

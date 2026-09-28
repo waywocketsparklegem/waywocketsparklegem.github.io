@@ -121,7 +121,7 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>, dream\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>, dream, sky\n" +
     "places:   portfolio, project-1, project-2, project-3, resume, home",
   ls: () => "sketchbook/  portfolio/  resume.txt",
   cd: (name) => goTo(name || "~"),
@@ -146,6 +146,10 @@ const commands = {
     return cowsay(words || "moo.");
   },
   "so cute": () => ":)",
+  sky: () => setSky(true),
+  sunset: () => setSunset(true),
+  daytime: () => setSunset(false),
+  normal: () => setSky(false),
 };
 
 // A command can set this to suggest what to type next. Otherwise the hint goes back to "type help".
@@ -155,6 +159,39 @@ let nextHint = "";
 function setSilly(on) {
   document.documentElement.classList.toggle("silly", on);
   return on ? cowsay("silly mode on.") : "back to normal.";
+}
+
+// Sky mode: the site's background becomes the sky and clouds fill the window (sky.js, styles at the end of
+// styles.css). "sunset" and "daytime" switch colors; "normal" ends it. Like silly mode, it lasts until the page changes.
+function setSky(on) {
+  const root = document.documentElement;
+  if (!on) {
+    if (!root.classList.contains("sky")) return "already normal.";
+    sky.stop();
+    root.classList.remove("sky", "sunset");
+    return "back to normal.";
+  }
+  if (!sky.start()) return "no sky here: this browser can't draw it.";
+  root.classList.add("sky");
+  return "sky mode on.";
+}
+
+function setSunset(on) {
+  const root = document.documentElement;
+  if (!root.classList.contains("sky")) {
+    nextHint = "type sky";
+    return "no sky yet. type sky first.";
+  }
+  sky.setSunset(on);
+  root.classList.toggle("sunset", on);
+  return on ? "sunset." : "daytime.";
+}
+
+// The hint in the command line when no command has suggested anything.
+function defaultHint() {
+  const root = document.documentElement;
+  if (root.classList.contains("sky")) return root.classList.contains("sunset") ? "type daytime" : "type sunset";
+  return root.classList.contains("silly") ? "type too silly" : "type help";
 }
 
 // cowsay: a cow says your words in a speech bubble. Lines wrap at 30 characters so the cow fits on a phone.
@@ -219,8 +256,7 @@ function setupCli() {
     output.textContent = command ? command(args.join(" ")) : `command not found: ${name}. try help`;
 
     // Show the suggested next command, or the usual hint.
-    const silly = document.documentElement.classList.contains("silly");
-    input.placeholder = nextHint || (silly ? "type too silly" : "type help");
+    input.placeholder = nextHint || defaultHint();
     nextHint = "";
   });
 

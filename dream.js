@@ -224,6 +224,12 @@ function setup() {
 }
 
 function frame(now) {
+  // In sky mode the clouds take the window's place, so the dream pauses until it ends.
+  if (document.documentElement.classList.contains("sky")) {
+    requestAnimationFrame(frame);
+    return;
+  }
+
   // On the home page, the dream waits behind the boot screen, so it starts growing as the site appears.
   const waiting = document.documentElement.classList.contains("booting");
 
