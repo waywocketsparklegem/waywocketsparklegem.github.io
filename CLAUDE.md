@@ -21,13 +21,16 @@ Personal portfolio for Carrie Markusen, live at https://carriemarkusen.net. It's
 ## Files
 
 ```
-index.html      home: boot screen, then "readme" window (thoughts, whoami, project listing, covers)
+index.html      home ("home terminal"): boot screen, then the dream (dream.js) filling the window
+portfolio.html  the old home content: thoughts, whoami, portfolio listing, tip
 project-1.html  \
 project-2.html   } title, info.txt facts, cover image, readme paragraph, image gallery, prev/next
 project-3.html  /
 resume.html     "exploration / in progress", email, experience log, resumé link
+dream.html      hidden page (the `dream` command): the same dream full screen, status bar only
 styles.css      all styles
 script.js       boot screen, command line, clock
+dream.js        the WebGL2 dream simulation, used by index.html and dream.html (settings at the top)
 images/placeholder.svg   flat #111111 box used for every placeholder image
 favicon.svg     green :) on black
 CNAME  .nojekyll  .gitignore
@@ -37,9 +40,11 @@ z_carrie/       old portfolio source (2020 site), local only, gitignored
 ## Page structure (Build 4: "carrie's brain", a terminal)
 
 Every page: skip link, then `<div class="screen">` holding three shared parts:
-- `<header class="sidebar">`: a `:)` label in Regular weight, with the same space above it as below the name block at the bottom, then a file tree (`~/carries-brain`, `projects/` with `project-1/` to `project-3/`, `resume.txt`). Tree lines are drawn in CSS. The current page link has `aria-current="page"`.
+- `<header class="sidebar">`: a `:)` label in Regular weight, with the same space above it as below the name block at the bottom, then a file tree (`~/carries-brain`, an empty `sketchbook/` (plain text, no page yet), `portfolio/` (links to `portfolio.html`) with `project-1/` to `project-3/`, `resume.txt`). Tree lines are drawn in CSS. The current page link has `aria-current="page"`.
 - `<main id="main" class="window">`: a `.titlebar` with a fake path, then `.window-body` made of sections. Each section is a fake command (`<p class="cmd">`, CSS adds `> `) and its `.output`. One `<h1>` per page, styled `.display`.
 - `<footer class="statusbar">`: command line form (prompt `carrie@brain ~>`; JetBrains Mono ligatures merge `~>` into one squiggly arrow, which Carrie wants), reply line, uptime and clock.
+
+The home page's window holds the dream instead of sections: its `<h1>` is the title bar path (`~/carries-brain/dream.exe`), and a `.home-dream` box holds the canvas (at least 70vh tall on small screens). The dream waits while the boot screen shows, so it starts growing as the site appears. `dream.html` is the exception to the shared frame: no sidebar and no window body, just a canvas with a floating title bar (its `<h1>` is the path) and the shared status bar. It isn't in the sidebar tree or `ls`; `dream` or `cd dream` opens it. `dream.js` runs a Gray-Scott reaction-diffusion simulation on the graphics card, seeded with a big `:)`; dragging seeds new growth; the feed and kill rates drift slightly across the screen and over time (kept narrow: wider drift turns areas solid or spotty). A window resize restarts it. Needs WebGL2 with float render targets; otherwise the title bar says so. To screenshot it, run frames synchronously in a test copy (headless Chrome needs `--use-angle=swiftshader --enable-unsafe-swiftshader` and is slow: about 1,100 frames, 18 seconds of real time, takes a few minutes).
 
 The sidebar and status bar are **copied into every page**, with a comment above each, and must stay identical (apart from `aria-current`).
 
@@ -47,7 +52,7 @@ Home page only: a `<script>` in `<head>` adds `booting` to `<html>` on the first
 
 Carrie's Mac has Reduce motion on. Typing and the cursor blink run for everyone regardless; only the power-on animation is skipped under `prefers-reduced-motion`.
 
-Command line (`script.js`): help, ls, cd/open/cat <place> (a bare `cd` goes home), whoami, pwd, date, clear, reboot, sudo, exit, cowsay <words> (the classic cow in a speech bubble; lines wrap at 30 characters so it fits on a phone; no words: "moo."; afterwards the hint says "type so cute", and `so cute` replaces the cow with just `:)`). A command can set `nextHint` to suggest what to type next; otherwise the hint is "type help", or "type too silly" in silly mode. `silly` turns on silly mode (class `silly` on `<html>`): Wingdings everywhere except the command line and its reply, a rainbow gradient background sliding slowly right to left, text and lines in one color that cycles every 8 seconds (set on `body` and inherited), placeholder images replaced by one color slowly cycling through the rainbow, and no terminal effects (no glow, scanlines or vignette); the hint changes to "type too silly", and `too silly` turns it off. It isn't saved, so changing page also ends it. Styles are at the end of `styles.css`. Places are listed in the `places` array. `/` focuses the command line; up/down arrows recall history.
+Command line (`script.js`): help, ls, cd/open/cat <place> (a bare `cd` goes home), whoami, pwd, date, clear, reboot, sudo, exit, dream, cowsay <words> (the classic cow in a speech bubble; lines wrap at 30 characters so it fits on a phone; no words: "moo."; afterwards the hint says "type so cute", and `so cute` replaces the cow with just `:)`). A command can set `nextHint` to suggest what to type next; otherwise the hint is "type help", or "type too silly" in silly mode. `silly` turns on silly mode (class `silly` on `<html>`): Wingdings everywhere except the command line and its reply, a rainbow gradient background sliding slowly right to left, text and lines in one color that cycles every 8 seconds (set on `body` and inherited), placeholder images replaced by one color slowly cycling through the rainbow, the dream see-through with its folds in a rainbow gradient that cycles every 8 seconds (`dream.js` checks the `silly` class every frame), and no terminal effects (no glow, scanlines or vignette); the hint changes to "type too silly", and `too silly` turns it off. It isn't saved, so changing page also ends it. Styles are at the end of `styles.css`. Places are listed in the `places` array. `/` focuses the command line; up/down arrows recall history. If the command line had focus when a page was left (a reload, or a command like `cd`), the next page focuses it again (sessionStorage key `cli-focus`), except while the boot screen shows.
 
 Images: `<figure class="shot">` with an `<img>` and a `<figcaption>` (file name, size). Swap `images/placeholder.svg` for real files.
 

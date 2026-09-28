@@ -3,49 +3,27 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>carrie's brain</title>
+    <title>portfolio | carrie's brain</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,400;1,100;1,400&amp;display=swap">
     <link rel="stylesheet" href="styles.css">
-    <!-- Show the boot screen once per visit. After that, the home page opens straight to the desktop. -->
-    <script>
-      try {
-        if (!sessionStorage.getItem("booted")) document.documentElement.classList.add("booting");
-      } catch (e) {
-        document.documentElement.classList.add("booting");
-      }
-    </script>
     <script src="script.js" defer></script>
-    <script src="dream.js" defer></script>
   </head>
   <body>
-    <!-- Boot screen: script.js types the welcome line, then asks for the password. -->
-    <div class="boot" id="boot">
-      <div class="boot-inner">
-        <p><span id="boot-text" data-text="welcome to carrie's brain"></span><span class="cursor" id="boot-cursor"></span></p>
-        <form class="boot-login" id="boot-login" autocomplete="off">
-          <label for="boot-password">&gt; enter password:</label>
-          <input id="boot-password" type="text" autocomplete="off" spellcheck="false" autocapitalize="off">
-        </form>
-        <p class="boot-message" id="boot-message" aria-live="assertive"></p>
-        <div class="boot-log" id="boot-log" aria-hidden="true"></div>
-      </div>
-    </div>
-
     <a class="skip-link" href="#main">skip to content</a>
 
-    <div class="screen" id="screen">
+    <div class="screen">
       <!-- Shared sidebar: identical on every page except which link has aria-current="page". Change it in all .html files. -->
       <header class="sidebar">
         <p class="sidebar-label" aria-hidden="true">:)</p>
         <nav class="tree" aria-label="primary">
-          <a class="tree-root" aria-current="page" href="index.html">~/carries-brain</a>
+          <a class="tree-root" href="index.html">~/carries-brain</a>
           <ul>
             <li><span class="tree-dir">sketchbook/</span></li>
             <li>
-              <a class="tree-dir" href="portfolio.html">portfolio/</a>
+              <a class="tree-dir" aria-current="page" href="portfolio.html">portfolio/</a>
               <ul>
                 <li><a href="project-1.html">project-1/</a></li>
                 <li><a href="project-2.html">project-2/</a></li>
@@ -60,13 +38,35 @@
 
       <main id="main" class="window" tabindex="-1">
         <div class="titlebar">
-          <h1 class="titlebar-path">~/carries-brain/dream.exe</h1>
-          <span id="dream-hint">[ drag to grow ]</span>
+          <span class="titlebar-path">~/carries-brain/portfolio/readme.txt</span>
+          <span>[ read only ]</span>
         </div>
 
-        <!-- The dream: dream.js grows a brain here, starting from a :). -->
-        <div class="home-dream">
-          <canvas class="dream-canvas" id="dream" aria-label="a brain growing its own folds, starting from a smiley face"></canvas>
+        <div class="window-body">
+          <section>
+            <p class="cmd">cat thoughts.txt</p>
+            <h1 class="output display">what<br>will<br>this be</h1>
+          </section>
+
+          <section>
+            <p class="cmd">whoami</p>
+            <p class="output lede">carrie markusen. placeholder for a short intro: what you make, who you make it for, and what you're curious about right now.</p>
+          </section>
+
+          <section>
+            <p class="cmd">ls -l portfolio/</p>
+            <div class="output listing">
+              <a href="project-1.html"><span>drwxr-xr-x</span><span>project-1/</span><span>2026</span></a>
+              <a href="project-2.html"><span>drwxr-xr-x</span><span>project-2/</span><span>2025</span></a>
+              <a href="project-3.html"><span>drwxr-xr-x</span><span>project-3/</span><span>2024</span></a>
+              <a href="resume.html"><span>-rw-r--r--</span><span>resume.txt</span><span>2026</span></a>
+            </div>
+          </section>
+
+          <section>
+            <p class="cmd">echo $TIP</p>
+            <p class="output">type <span class="cmd-word">help</span> in the command line below to get around by keyboard.</p>
+          </section>
         </div>
       </main>
 

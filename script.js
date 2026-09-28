@@ -19,7 +19,7 @@ const bootLog = [
   "[ ok ] mounting /dev/imagination",
   "[ ok ] synapse bus online ......... 86,000,000,000 nodes",
   "[ ok ] loading palette ............ 16,777,216 colors",
-  "[ ok ] indexing ~/projects ........ 3 found",
+  "[ ok ] indexing ~/portfolio ....... 3 found",
   "[ ok ] warming dream cache",
   "[ ok ] aligning memory to the northern stars",
   "",
@@ -102,11 +102,13 @@ const places = [
   { names: ["project-2", "project2", "p2", "2"], url: "project-2.html" },
   { names: ["project-3", "project3", "p3", "3"], url: "project-3.html" },
   { names: ["resume.txt", "resume", "cv", "about"], url: "resume.html" },
+  { names: ["portfolio", "work"], url: "portfolio.html" },
   { names: ["~", "home", "..", "/", "carries-brain"], url: "index.html" },
+  { names: ["dream.exe", "dream"], url: "dream.html" },
 ];
 
 function findPlace(name) {
-  const clean = (name || "").toLowerCase().replace(/^projects\//, "").replace(/\/$/, "");
+  const clean = (name || "").toLowerCase().replace(/\/$/, "").replace(/^portfolio\//, "");
   return places.find((place) => place.names.includes(clean));
 }
 
@@ -119,10 +121,11 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>\n" +
-    "places:   project-1, project-2, project-3, resume, home",
-  ls: () => "projects/project-1/  projects/project-2/  projects/project-3/  resume.txt",
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>, dream\n" +
+    "places:   portfolio, project-1, project-2, project-3, resume, home",
+  ls: () => "sketchbook/  portfolio/  resume.txt",
   cd: (name) => goTo(name || "~"),
+  dream: () => goTo("dream"),
   open: goTo,
   cat: goTo,
   whoami: () => "carrie markusen. physical + digital designer.",
@@ -241,6 +244,17 @@ function setupCli() {
       input.focus();
     }
   });
+
+  // Stay in the command line across page loads: if it was in use when the page was left (a reload, or a
+  // command like cd), the next page puts the typing back there. Not while the boot screen wants the password.
+  window.addEventListener("pagehide", () => {
+    try { sessionStorage.setItem("cli-focus", document.activeElement === input ? "1" : ""); } catch (e) {}
+  });
+  try {
+    if (sessionStorage.getItem("cli-focus") && !document.documentElement.classList.contains("booting")) {
+      input.focus({ preventScroll: true });
+    }
+  } catch (e) {}
 }
 
 /* ---------- 3. Clock and uptime ---------- */

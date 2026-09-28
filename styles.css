@@ -645,3 +645,54 @@ html.silly .cli input::placeholder {
   67% { background-color: #0000ff; }
   83% { background-color: #ff00ff; }
 }
+
+/* ---------- Dream (dream.html, the "dream" command) ---------- */
+
+/* The dream fills the screen above the status bar. */
+.dream {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.dream-window {
+  position: relative;
+  overflow: hidden;
+}
+
+.dream-window:focus {
+  outline: none;
+}
+
+/* touch-action: none lets fingers draw instead of scrolling the page. */
+.dream-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* The title bar floats over the top of the dream. */
+.dream .titlebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  background: var(--black);
+}
+
+/* On the home page and dream.html, the title bar's path is the page's h1. */
+.titlebar h1 {
+  font-size: inherit;
+}
+
+/* Home page: the dream fills the window under the title bar. On small screens it gets most of the screen. */
+.home-dream {
+  position: relative;
+  flex: 1;
+  min-height: 70vh;
+}
