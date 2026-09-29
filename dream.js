@@ -91,6 +91,8 @@ uniform vec3 green;
 uniform vec3 white;
 uniform float time;
 uniform float silly;  // 1 in silly mode, 0 otherwise
+uniform float holo;   // 1 in holo mode, 0 otherwise
+uniform vec2 tilt;    // holo mode's tilt, -1 to 1 on each axis
 in vec2 uv;
 out vec4 color;
 
@@ -115,8 +117,18 @@ void main() {
   // Silly mode: a rainbow across the screen that slides through every color every 8 seconds.
   vec3 goo = mix(green, rainbow(uv.x + uv.y * 0.5 - time / 8.0), silly);
   vec3 lit = fold * (goo * (0.2 + 0.8 * diffuse) + white * shine * 0.7);
-  // Outside the folds: black normally, see-through in silly mode.
-  float alpha = mix(1.0, fold, silly);
+
+  // Holo mode: the folds are an iridescent film. Each fold's color comes from the angle between its surface
+  // and the tilt, like a hologram sticker, and a bright glint sits where the tilted light hits it square on.
+  vec3 holoLight = normalize(vec3(tilt.x, -tilt.y, 0.9));
+  float angle = dot(normal, holoLight);
+  vec3 film = 0.55 + 0.45 * cos(6.2831 * (angle * 1.6 + dot(normal.xy, tilt) * 0.8 + vec3(0.0, 0.33, 0.67)));
+  float glint = pow(max(reflect(-holoLight, normal).z, 0.0), 30.0);
+  vec3 holoLit = fold * (mix(film, vec3(1.0), 0.15) * (0.55 + 0.45 * diffuse) + vec3(glint));
+  lit = mix(lit, holoLit, holo);
+
+  // Outside the folds: black normally, see-through in silly and holo modes.
+  float alpha = mix(1.0, fold, max(silly, holo));
   color = vec4(min(lit, vec3(alpha)), alpha);
 }`;
 
@@ -252,6 +264,8 @@ function frame(now) {
     white,
     time: now / 1000,
     silly: document.documentElement.classList.contains("silly") ? 1 : 0,
+    holo: document.documentElement.classList.contains("holo") ? 1 : 0,
+    tilt: [holoTilt.x, holoTilt.y],
   });
   run(null, canvas.width, canvas.height, targets[current].texture);
   requestAnimationFrame(frame);

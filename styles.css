@@ -746,3 +746,125 @@ html.sky #dream-hint,
 html.sky h1.titlebar-path {
   visibility: hidden;
 }
+
+/* ---------- Holo mode (the "holo" command; Esc turns it off) ---------- */
+
+/* script.js sets the tilt as it follows the mouse (or the phone's tilt):
+   --tx and --ty run from -1 to 1, and --mx and --my are where the glare sits. Straight on until it moves. */
+html.holo {
+  --tx: 0;
+  --ty: 0;
+  --mx: 50%;
+  --my: 50%;
+  /* The ink is mostly dark, like real holo seen from the wrong angle, with narrow bands of color that
+     sweep through the letters as it tilts. Lines shift hue as it tilts. */
+  --holo-dark: #120828;
+  --holo-ink: repeating-linear-gradient(calc(120deg + var(--tx) * 50deg),
+    var(--holo-dark) 0, var(--holo-dark) 110px, #4b1fd1 160px, #0a6fd6 200px, var(--holo-dark) 250px,
+    var(--holo-dark) 380px, #008f86 420px, #c01c7d 470px, var(--holo-dark) 520px, var(--holo-dark) 600px);
+  /* The site's green (selection, focus outlines, the cursor) turns dark ink too. */
+  --green: var(--holo-dark);
+  --glow: none;
+  --holo-line: hsl(calc(265 + var(--tx) * 70 + var(--ty) * 40) 70% 45% / 0.55);
+  --holo-solid: hsl(calc(265 + var(--tx) * 70 + var(--ty) * 40) 70% 16%);
+
+  /* The foil, top layer first. Around the pointer the foil looks pulled up toward you: a glare right under
+     it, a soft ring of rainbow spreading out from it, and a faint shadow where the lifted foil curves back
+     down. Under that, fine diffraction lines and a rainbow that slides as it tilts. */
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 34%),
+    radial-gradient(circle at var(--mx) var(--my),
+      rgba(255, 110, 200, 0) 10%, rgba(255, 110, 200, 0.14) 17%, rgba(255, 220, 90, 0.13) 23%,
+      rgba(80, 240, 200, 0.13) 29%, rgba(110, 140, 255, 0.14) 35%, rgba(180, 90, 255, 0.1) 41%,
+      rgba(180, 90, 255, 0) 50%),
+    radial-gradient(circle at var(--mx) var(--my), rgba(70, 30, 120, 0) 40%, rgba(70, 30, 120, 0.04) 50%, rgba(70, 30, 120, 0) 64%),
+    repeating-linear-gradient(calc(62deg + var(--tx) * 12deg), rgba(255, 255, 255, 0) 0 3px, rgba(255, 255, 255, 0.22) 3px 4px),
+    linear-gradient(calc(135deg + var(--tx) * 45deg + var(--ty) * 25deg),
+      #ffabe0, #b0bbff, #93f7df, #ffee8f, #ffb894, #d4a3ff, #95e2ff, #ffabe0, #b0bbff, #93f7df);
+  background-size: auto, auto, auto, auto, 300% 300%;
+  background-position: 0 0, 0 0, 0 0, 0 0, calc(50% + var(--tx) * 45%) calc(50% + var(--ty) * 45%);
+  background-attachment: fixed;
+}
+
+/* All text is foil ink, and lines take a hue that shifts as it tilts. */
+html.holo body {
+  background: transparent;
+  color: var(--holo-solid);
+  text-shadow: none;
+}
+
+html.holo body *:not(canvas),
+html.holo body *::before,
+html.holo body *::after,
+html.holo .tree a[aria-current="page"],
+html.holo .tree a[aria-current="page"]::after {
+  color: inherit;
+  background-color: transparent;
+  border-color: var(--holo-line);
+  text-shadow: none;
+}
+
+/* The ink gradient is painted through the letters and slides as it tilts. Each element that holds only text
+   paints its own (painting it once for the whole page puts text in the wrong place in some browsers).
+   Elements that mix text with other tags keep the solid ink above. */
+html.holo body :not(:has(:not(br))):not(canvas, img, input) {
+  background-image: var(--holo-ink);
+  background-position: calc(var(--tx) * -300px) calc(var(--ty) * -300px);
+  background-attachment: fixed;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Glitter over everything, in place of the CRT effect: random flecks of different sizes, each catching
+   its own color (a noise texture, cut down to its strongest specks). Two layers shift by different amounts as it tilts,
+   so flecks glint in and out, and they catch the light most around the pointer. */
+html.holo body::after {
+  display: block;
+  --fleck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='3.2 0 0 0 -1.1 0 3.2 0 0 -1.1 0 0 3.2 0 -1.1 0 0 0 13 -9.1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  background:
+    var(--fleck) calc(var(--tx) * -14px) calc(var(--ty) * -14px) / 240px 240px,
+    var(--fleck) calc(97px + var(--tx) * 22px) calc(53px + var(--ty) * 22px) / 330px 330px;
+  -webkit-mask-image: radial-gradient(circle at var(--mx) var(--my), #000 0, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0.22) 70%);
+  mask-image: radial-gradient(circle at var(--mx) var(--my), #000 0, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0.22) 70%);
+}
+
+/* Links: hovering turns the link into a strip of the dark ink, with its color bands, and white letters. */
+html.holo body a:hover,
+html.holo body a:focus-visible {
+  background: var(--holo-ink);
+  background-attachment: fixed;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  color: #ffffff;
+}
+
+/* Selected text: white letters on dark ink. */
+html.holo ::selection {
+  background: var(--holo-dark);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+/* The command line's typing and hint stay solid, so they can be read while typing. */
+html.holo .cli input,
+html.holo .cli input::placeholder {
+  color: var(--holo-dark);
+  caret-color: var(--holo-dark);
+}
+
+/* Placeholder images become foil cards that tilt in 3D, with their own glare and rainbow.
+   The flat placeholder picture is pushed out of its box so the foil shows (as in silly mode). */
+html.holo .shot {
+  transform: perspective(900px) rotateX(calc(var(--ty) * -7deg)) rotateY(calc(var(--tx) * 7deg));
+}
+
+html.holo .shot img[src$="placeholder.svg"] {
+  object-position: -200vw 0;
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%),
+    repeating-linear-gradient(calc(100deg + var(--tx) * 20deg), rgba(255, 255, 255, 0) 0 2px, rgba(255, 255, 255, 0.3) 2px 3px),
+    linear-gradient(calc(45deg + var(--tx) * 90deg), #ff2e97, #4f5bff, #00d9b8, #ffe03d, #ff6b2e, #9b3dff, #ff2e97);
+  background-size: auto, auto, 250% 250%;
+  background-position: 0 0, 0 0, calc(50% + var(--tx) * 50%) calc(50% + var(--ty) * 50%);
+}

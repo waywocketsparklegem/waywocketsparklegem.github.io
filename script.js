@@ -121,7 +121,7 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, cowsay <words>, dream, sky\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, cowsay <words>, dream, sky\n" +
     "places:   portfolio, project-1, project-2, project-3, resume, home",
   ls: () => "sketchbook/  portfolio/  resume.txt",
   cd: (name) => goTo(name || "~"),
@@ -149,7 +149,8 @@ const commands = {
   sky: () => setSky(true),
   sunset: () => setSunset(true),
   daytime: () => setSunset(false),
-  normal: () => setSky(false),
+  holo: () => setHolo(true),
+  normal: () => backToNormal(),
 };
 
 // A command can set this to suggest what to type next. Otherwise the hint goes back to "type help".
@@ -162,15 +163,9 @@ function setSilly(on) {
 }
 
 // Sky mode: the site's background becomes the sky and clouds fill the window (sky.js, styles at the end of
-// styles.css). "sunset" and "daytime" switch colors; "normal" ends it. Like silly mode, it lasts until the page changes.
-function setSky(on) {
+// styles.css). "sunset" and "daytime" switch colors; Esc ends it. Like silly mode, it lasts until the page changes.
+function setSky() {
   const root = document.documentElement;
-  if (!on) {
-    if (!root.classList.contains("sky")) return "already normal.";
-    sky.stop();
-    root.classList.remove("sky", "sunset");
-    return "back to normal.";
-  }
   if (!sky.start()) return "no sky here: this browser can't draw it.";
   root.classList.add("sky");
   return "sky mode on.";
@@ -187,10 +182,82 @@ function setSunset(on) {
   return on ? "sunset." : "daytime.";
 }
 
+// Holo mode: the whole site turns into holographic foil that catches the light as it tilts (styles at the end of
+// styles.css). The mouse is the tilt; on phones, the phone's own tilt or a dragging finger. Esc ends it, and
+// like silly mode it lasts until the page changes.
+// holoTilt runs from -1 to 1 on each axis; dream.js reads it too, to light its folds.
+const holoTilt = { x: 0, y: 0 };
+const holoTarget = { x: 0, y: 0 };
+let holoRunning = false;
+
+function aimHolo(x, y) {
+  holoTarget.x = Math.max(-1, Math.min(1, x));
+  holoTarget.y = Math.max(-1, Math.min(1, y));
+}
+
+const holoPointer = (event) => aimHolo((event.clientX / window.innerWidth) * 2 - 1, (event.clientY / window.innerHeight) * 2 - 1);
+// Phone tilt: leaning left and right, and forward and back from holding it at about 45 degrees.
+const holoOrientation = (event) => {
+  if (event.gamma === null) return;
+  aimHolo(event.gamma / 30, (event.beta - 45) / 30);
+};
+
+// Each frame the tilt eases toward where it's aimed, so the light glides instead of jumping, and the
+// styles read it as CSS variables: --tx and --ty (-1 to 1), --mx and --my (where the glare sits, in %).
+function holoFrame() {
+  if (!holoRunning) return;
+  holoTilt.x += (holoTarget.x - holoTilt.x) * 0.12;
+  holoTilt.y += (holoTarget.y - holoTilt.y) * 0.12;
+  const style = document.documentElement.style;
+  style.setProperty("--tx", holoTilt.x.toFixed(4));
+  style.setProperty("--ty", holoTilt.y.toFixed(4));
+  style.setProperty("--mx", `${(50 + holoTilt.x * 50).toFixed(2)}%`);
+  style.setProperty("--my", `${(50 + holoTilt.y * 50).toFixed(2)}%`);
+  requestAnimationFrame(holoFrame);
+}
+
+function setHolo(on) {
+  const root = document.documentElement;
+  root.classList.toggle("holo", on);
+  if (on && !holoRunning) {
+    holoRunning = true;
+    window.addEventListener("pointermove", holoPointer);
+    window.addEventListener("deviceorientation", holoOrientation);
+    // iPhones only share their tilt after asking. Typing the command counts as a tap, so the question can show.
+    if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) {
+      DeviceOrientationEvent.requestPermission().catch(() => {});
+    }
+    requestAnimationFrame(holoFrame);
+  } else if (!on) {
+    holoRunning = false;
+    window.removeEventListener("pointermove", holoPointer);
+    window.removeEventListener("deviceorientation", holoOrientation);
+    for (const name of ["--tx", "--ty", "--mx", "--my"]) root.style.removeProperty(name);
+  }
+  return on ? "holo mode on. move around to tilt it." : "back to normal.";
+}
+
+// Esc (or "normal") ends whichever modes are on: sky, holo and silly.
+function backToNormal() {
+  const root = document.documentElement;
+  const inSky = root.classList.contains("sky");
+  const inHolo = root.classList.contains("holo");
+  const inSilly = root.classList.contains("silly");
+  if (!inSky && !inHolo && !inSilly) return "already normal.";
+  if (inSilly) setSilly(false);
+  if (inSky) {
+    sky.stop();
+    root.classList.remove("sky", "sunset");
+  }
+  if (inHolo) setHolo(false);
+  return "back to normal.";
+}
+
 // The hint in the command line when no command has suggested anything.
 function defaultHint() {
   const root = document.documentElement;
   if (root.classList.contains("sky")) return root.classList.contains("sunset") ? "type daytime" : "type sunset";
+  if (root.classList.contains("holo")) return "press esc";
   return root.classList.contains("silly") ? "type too silly" : "type help";
 }
 
@@ -271,6 +338,15 @@ function setupCli() {
     }
     event.preventDefault();
     input.value = history[historyIndex] || "";
+  });
+
+  // Esc anywhere ends the modes. It only answers when a mode was on, so Esc stays quiet the rest of the time.
+  document.addEventListener("keydown", (event) => {
+    const root = document.documentElement;
+    if (event.key !== "Escape" || root.classList.contains("booting")) return;
+    if (!["sky", "holo", "silly"].some((mode) => root.classList.contains(mode))) return;
+    output.textContent = backToNormal();
+    input.placeholder = defaultHint();
   });
 
   // Press / anywhere to jump to the command line.
