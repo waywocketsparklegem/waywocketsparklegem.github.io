@@ -23,10 +23,12 @@ Personal portfolio for Carrie Markusen, live at https://carriemarkusen.net. It's
 
 ```
 index.html      home ("home terminal"): boot screen, then the dream (dream.js) filling the window
-portfolio.html  the old home content: thoughts, whoami, portfolio listing, tip
-project-1.html  \
-project-2.html   } title, info.txt facts, cover image, readme paragraph, image gallery, prev/next
-project-3.html  /
+placeholder.html  the old home content: thoughts, whoami, placeholder listing, tip (was portfolio.html until Build 5)
+portfolio.html  the new portfolio (Build 5): white "portfolio theme", no title bar (its h1 path is `.visually-hidden`), a thumbnail gallery of the five projects (`.gallery.portfolio-gallery`: 3 columns from 50em, one below; thumbnails cropped to 3:4, captioned with the project name), each linking to its project page. (Full-width stacked images were tried in between; Carrie settled on the thumbnails.)
+consent.html  medica.html  thrivent.html  ahip.html  two-mules.html
+                the portfolio's project pages, in that order (the pager runs through them): the placeholder project layout with placeholder copy and images, in the portfolio theme, paths ~/carries-brain/portfolio/<name>/
+images/portfolio/  consent.jpg, medica.jpg, thrivent.jpg, ahip.jpg, two-mules.jpg: 900px-wide JPEG thumbnails (quality 80, 1.1 MB together) made with sips from Carrie's original PNGs, which sit beside them (7.3 MB, not used by any page)
+project-1.html  the one placeholder project left (title, info.txt facts, cover image, readme paragraph, image gallery, prev/next); project-2 and project-3 were deleted in Build 5
 resume.html     "exploration / in progress", email, experience log, resumé link
 dream.html      hidden page (`cd dream` or `open dream`): the same dream full screen, status bar only
 styles.css      all styles
@@ -42,7 +44,7 @@ z_carrie/       old portfolio source (2020 site), local only, gitignored
 ## Page structure (Build 4: "carrie's brain", a terminal)
 
 Every page: skip link, then `<div class="screen">` holding three shared parts:
-- `<header class="sidebar">`: a `:)` label in Regular weight, with the same space above it as below the name block at the bottom, then a file tree (`~/carries-brain`, an empty `sketchbook/` (plain text, no page yet), `portfolio/` (links to `portfolio.html`) with `project-1/` to `project-3/`, `resume.txt`). Tree lines are drawn in CSS. The current page link has `aria-current="page"`.
+- `<header class="sidebar">`: a `:)` label in Regular weight, with the same space above it as below the name block at the bottom, then a file tree (`~/carries-brain`, `portfolio/` (links to `portfolio.html`) with `consent/`, `medica/`, `thrivent/`, `ahip/`, `two-mules/`, an empty `sketchbook/` (plain text, no page yet), `placeholder/` (links to `placeholder.html`) with `project-1/`, `resume.txt`). Tree lines are drawn in CSS. The current page link has `aria-current="page"`.
 - `<main id="main" class="window">`: a `.titlebar` with a fake path, then `.window-body` made of sections. Each section is a fake command (`<p class="cmd">`, CSS adds `> `) and its `.output`. One `<h1>` per page, styled `.display`.
 - `<footer class="statusbar">`: command line form (prompt `carrie@brain ~>`; JetBrains Mono ligatures merge `~>` into one squiggly arrow, which Carrie wants), reply line, uptime and clock.
 
@@ -50,7 +52,7 @@ The home page's window holds the dream instead of sections: its `<h1>` is the ti
 
 The sidebar and status bar are **copied into every page**, with a comment above each, and must stay identical (apart from `aria-current`).
 
-Home page only: a `<script>` in `<head>` adds `booting` to `<html>` on the first visit of a browser session (sessionStorage key `booted`). That shows `.boot`: it types "welcome to carrie's brain", then shows "> enter password:" with a plain text field (typed characters are shown, not masked). The password is `:)` (the `password` constant in `script.js`); a wrong one prints "access denied. try again." and clears the field. The right one prints "access granted.", a boot log (technical, with a touch of fantasy; no jokes), then reveals the site with a power-on animation. Hidden shortcut (deliberately not mentioned anywhere on the site): any command the command line knows (`rage`, `holo`, `cd portfolio`, `cowsay hi`...) or a bare place name (`portfolio`, `project-2`) is also accepted, logs in the same way, and is run through `runCommand` as the site appears (a place name becomes `cd <place>`). `findCommand` and `runCommand` are shared with the command line. Clicking anywhere on the boot screen just refocuses the field. The password is cosmetic: it's readable in the page source, the other pages can be opened directly, and the repo is public. Carrie knows and chose this over taking the site offline. Later visits to home skip it; the `reboot` command replays it.
+Home page only: a `<script>` in `<head>` adds `booting` to `<html>` on the first visit of a browser session (sessionStorage key `booted`). That shows `.boot`: it types "welcome to carrie's brain", then shows "> enter password:" with a plain text field (typed characters are shown, not masked). The password is `:)` (the `password` constant in `script.js`); a wrong one prints "access denied. try again." and clears the field. The right one prints "access granted.", a boot log (technical, with a touch of fantasy; no jokes), then reveals the site with a power-on animation. Hidden shortcut (deliberately not mentioned anywhere on the site): any command the command line knows (`rage`, `holo`, `cd portfolio`, `cowsay hi`...) or a bare place name (`portfolio`, `project-2`) is also accepted, logs in the same way, and is run through `runCommand` as the site appears (a place name becomes `cd <place>`). `findCommand` and `runCommand` are shared with the command line. Clicking anywhere on the boot screen just refocuses the field. The password is cosmetic: it's readable in the page source, the other pages can be opened directly, and the repo is public. Carrie knows and chose this over taking the site offline. Later visits to home skip it; the `reboot` command replays it. Opening any other page also sets `booted` (in `script.js`), so the password screen only shows on a visit that starts at home, or after `reboot`; reaching home any other way (sidebar link, `cd ~`, `cd home`) skips it.
 
 Carrie's Mac has Reduce motion on. Typing and the cursor blink run for everyone regardless; only the power-on animation is skipped under `prefers-reduced-motion`.
 
@@ -62,11 +64,12 @@ Images: `<figure class="shot">` with an `<img>` and a `<figcaption>` (file name,
 
 Settings live at the top of `styles.css`:
 - **Colors (black, white and green, plus gray for data text):** `--black: #000000` background, `--white: #fcfcfc` commands and secondary text, `--green: #03f900` main text, borders, hover. Green rules use `--rule: 0.5px` (a hairline on Retina). `--placeholder: #111111` is only for placeholder images (one tint lighter than black). `--gray: #a8a8a8` is for data text only: currently just the title bar path, chosen to match how the white `[ read only ]` and uptime look once the corner vignette darkens them. No other colors, per Carrie. The green text glow and black scanline overlay are effects, not new colors.
+- **Portfolio theme** (`portfolio.html` only, class `portfolio-theme` on `<html>`, Build 5): white background, black text and lines, no effects (no glow, scanlines or vignette), and no uptime or clock in the status bar (hidden with CSS, so the shared status bar markup stays identical). It swaps `--black`, `--white`, `--green` and `--gray`, so the sidebar, window, status bar, hovers and selection all follow. Its rules come before the modes in `styles.css`, so modes still work on top of it.
 - **Font:** JetBrains Mono, Thin (100) everywhere by default. Regular (400) is used for the sidebar `:)` and the name block at the bottom of the sidebar. The Google Fonts `<link>` is in every page's `<head>`.
 - **Type:** `--display-size` for page `<h1>`s, `--h2-size: 1.25rem` for the tree root, `--body-size: 0.875rem` for everything else.
 - **Links:** no underline. Hover and keyboard focus invert them (green background, black text). Gallery thumbnails instead get a white frame.
 - **CRT effect:** `body::after` draws scanlines and a vignette over everything, with `pointer-events: none`.
-- **Layout:** one breakpoint at `50em`. Below: tree, window and status bar stack, status bar sticks to the bottom. From 50em: the screen is exactly one viewport tall, tree on the left at 30%, window on the right scrolls on its own, status bar across the bottom.
+- **Layout:** one breakpoint at `50em`. Below: tree, window and status bar stack, status bar sticks to the bottom. From 50em: the screen is exactly one viewport tall, tree on the left at 25% (`--sidebar-width`), window on the right scrolls on its own, status bar across the bottom.
 - **All visible text is lowercase,** written that way in the HTML.
 
 ## Build history
@@ -75,10 +78,12 @@ Settings live at the top of `styles.css`:
 - **Build 2:** a neutral wireframe with separate HTML pages, one breakpoint, and a hover-to-reveal menu.
 - **Build 3:** the hover was removed and the sidebar became name / projects / `:)`. The contact page was renamed `resume.html`. All text went lowercase, letter spacing to 0, and link hover to italic. New colors: black sidebar, off-black pages, green accent. A code cleanup came last.
 - **Build 4:** "carrie's brain". The site became a terminal: boot screen with typed welcome and a password prompt (`:)`), file-tree sidebar, command windows, status bar with a working command line and clock, CRT scanlines, placeholder images, favicon (a green `:)` on black). Added `script.js`. Black, white and green, plus gray for data text; JetBrains Mono Thin throughout. Pushed live as one commit (`c7a7838`).
+- **Build 5:** sidebar narrowed from 30% to 25%. The old portfolio page became `placeholder/` (`placeholder.html`, now holding only project-1: project-2 and project-3 were deleted), and a new `portfolio/` (`portfolio.html`, below `placeholder/` in the tree) has its own white theme, no title bar, and a 3-column thumbnail gallery of five projects (consent, medica, thrivent, ahip, two-mules), each linking to a placeholder project page in the same theme.
 
-## Where things stand (2026-09-26)
+## Where things stand (2026-09-29)
 
-- Build 4 is live at carriemarkusen.net and is the current build. Carrie will say when Build 5 starts.
+- Build 5 is live at carriemarkusen.net and is the current build (pushed 2026-09-29). Carrie will say when Build 6 starts.
+- Not in git on purpose (public repo): Carrie's original portfolio PNGs in `images/portfolio/` (only the JPEG thumbnails are committed) and `images/SSSVDHCTTEE_01_4000x.webp` (rage mode's inspiration, a band's merch photo).
 - A wrap-up fix pass is committed and pushed as part of Build 4: password prompt can't be tabbed to or submitted before it appears, no focus outline around the window after login, bare `cd` goes home, unused `.dim` and `.visually-hidden` styles removed.
 - GitHub's Pages "DNS check" showed "in progress" after launch. DNS at Porkbun was verified correct (four GitHub A records, `www` CNAME to `waywocketsparklegem.github.io`) and the site loads. If the check is still stuck, remove and re-add the custom domain in Settings > Pages, then confirm `CNAME` is still in the repo.
 - Carrie was offered real privacy (verify the domain, make the repo private, take Pages offline) and chose the cosmetic password instead. Don't re-suggest unless she asks.

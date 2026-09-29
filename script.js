@@ -1,7 +1,7 @@
 /*
   Carrie's brain: the moving parts.
   1. Boot screen (home page only): types the welcome line, asks for the password, prints a boot log, then shows the site.
-  2. Command line in the status bar: type help, ls, cd project-2, open resume, and so on.
+  2. Command line in the status bar: type help, ls, cd portfolio, open resume, and so on.
   3. Clock and uptime in the status bar.
 */
 
@@ -21,7 +21,7 @@ const bootLog = [
   "[ ok ] mounting /dev/imagination",
   "[ ok ] synapse bus online ......... 86,000,000,000 nodes",
   "[ ok ] loading palette ............ 16,777,216 colors",
-  "[ ok ] indexing ~/portfolio ....... 3 found",
+  "[ ok ] indexing ~/placeholder ..... 1 found",
   "[ ok ] warming dream cache",
   "[ ok ] aligning memory to the northern stars",
   "",
@@ -108,16 +108,20 @@ async function runBoot() {
 // Places you can go. The first name is the one shown by `ls`.
 const places = [
   { names: ["project-1", "project1", "p1", "1"], url: "project-1.html" },
-  { names: ["project-2", "project2", "p2", "2"], url: "project-2.html" },
-  { names: ["project-3", "project3", "p3", "3"], url: "project-3.html" },
   { names: ["resume.txt", "resume", "cv", "about"], url: "resume.html" },
+  { names: ["placeholder"], url: "placeholder.html" },
   { names: ["portfolio", "work"], url: "portfolio.html" },
+  { names: ["consent"], url: "consent.html" },
+  { names: ["medica"], url: "medica.html" },
+  { names: ["thrivent"], url: "thrivent.html" },
+  { names: ["ahip"], url: "ahip.html" },
+  { names: ["two-mules"], url: "two-mules.html" },
   { names: ["~", "home", "..", "/", "carries-brain"], url: "index.html" },
   { names: ["dream.exe", "dream"], url: "dream.html" },
 ];
 
 function findPlace(name) {
-  const clean = (name || "").toLowerCase().replace(/\/$/, "").replace(/^portfolio\//, "");
+  const clean = (name || "").toLowerCase().replace(/\/$/, "").replace(/^(placeholder|portfolio)\//, "");
   return places.find((place) => place.names.includes(clean));
 }
 
@@ -131,8 +135,9 @@ function goTo(name) {
 const commands = {
   help: () =>
     "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, rage, cowsay <words>, sky\n" +
-    "places:   portfolio, project-1, project-2, project-3, resume, home",
-  ls: () => "sketchbook/  portfolio/  resume.txt",
+    "places:   portfolio, consent, medica, thrivent, ahip, two-mules, placeholder, project-1,\n" +
+    "          resume, home",
+  ls: () => "portfolio/  sketchbook/  placeholder/  resume.txt",
   cd: (name) => goTo(name || "~"),
   open: goTo,
   cat: goTo,
@@ -458,6 +463,12 @@ function setupClock() {
   };
   tick();
   setInterval(tick, 1000);
+}
+
+// The password screen only greets a visit that starts at home (or a reboot). Opening any other page counts as
+// being in, so getting home later (the sidebar link, cd ~, cd home...) goes straight past it.
+if (!document.getElementById("boot")) {
+  try { sessionStorage.setItem("booted", "1"); } catch (e) {}
 }
 
 setupCli();

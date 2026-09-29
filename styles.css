@@ -24,7 +24,7 @@
   --h2-size: 1.25rem;
   --body-size: 0.875rem;
 
-  --sidebar-width: 30%;
+  --sidebar-width: 25%;
   --gutter: clamp(1rem, 3vw, 2.5rem);
   --glow: 0 0 6px rgba(3, 249, 0, 0.45);
 
@@ -117,6 +117,16 @@ a:focus-visible {
 .skip-link:focus {
   left: 1rem;
   top: 1rem;
+}
+
+/* Hidden on screen but still read out by screen readers (the portfolio page's heading). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* The blinking block cursor. */
@@ -559,6 +569,43 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .powering-on {
     animation: none;
+  }
+}
+
+/* ---------- Portfolio theme (portfolio.html, class "portfolio-theme" on <html>) ---------- */
+
+/* White background, black text and lines, no effects. It swaps the color settings, so everything (sidebar,
+   window, status bar, hovers, selection) follows. It comes before the modes, so they still work on top of it. */
+html.portfolio-theme {
+  --black: #ffffff;
+  --white: #000000;
+  --green: #000000;
+  --gray: #000000;
+  --placeholder: #ffffff;  /* the frames behind images and their captions */
+  --glow: none;
+}
+
+/* No scanlines or vignette. */
+html.portfolio-theme body::after {
+  display: none;
+}
+
+/* No uptime or clock in the status bar: just the command line. */
+html.portfolio-theme .status {
+  display: none;
+}
+
+/* The portfolio's thumbnail gallery: 3 columns on wide screens (one below the 50em breakpoint, like the rest
+   of the layout). Every thumbnail is cropped to the same 3:4 shape, so the rows line up. */
+.portfolio-gallery img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
+@media (min-width: 50em) {
+  .portfolio-gallery {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
