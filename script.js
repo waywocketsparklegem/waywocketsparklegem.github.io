@@ -10,6 +10,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /* ---------- 1. Boot screen ---------- */
 
 // The password typed at the boot screen. This is for show: anyone can read it here in the page source.
+// A hidden shortcut: typing any command instead (like "rage" or "cd portfolio"), or just a place's name
+// (like "portfolio"), also gets in, and runs it as the site appears. Nothing on screen mentions this.
 const password = ":)";
 
 // Lines printed after Enter. Edit freely.
@@ -59,12 +61,18 @@ async function runBoot() {
   input.addEventListener("input", fitInput);
   fitInput();
 
-  // Wait for the right password. A wrong one clears the field and asks again.
-  await new Promise((resolve) => {
+  // Wait for the right password, or a command or place name to run once in. Anything else clears the field
+  // and asks again.
+  const entered = await new Promise((resolve) => {
     login.addEventListener("submit", (event) => {
       event.preventDefault();
+      const line = input.value.trim();
       if (input.value === password) {
-        resolve();
+        resolve("");
+      } else if (line && findCommand(line)) {
+        resolve(line);
+      } else if (line && findPlace(line)) {
+        resolve(`cd ${line}`);
       } else {
         message.textContent = "access denied. try again.";
         input.value = "";
@@ -89,6 +97,7 @@ async function runBoot() {
   try { sessionStorage.setItem("booted", "1"); } catch (e) {}
   const screen = document.getElementById("screen");
   root.classList.remove("booting");
+  if (entered) runCommand(entered);
   screen.classList.add("powering-on");
   screen.addEventListener("animationend", () => screen.classList.remove("powering-on"), { once: true });
   document.getElementById("main").focus({ preventScroll: true });
@@ -121,11 +130,10 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, cowsay <words>, dream, sky\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, rage, cowsay <words>, sky\n" +
     "places:   portfolio, project-1, project-2, project-3, resume, home",
   ls: () => "sketchbook/  portfolio/  resume.txt",
   cd: (name) => goTo(name || "~"),
-  dream: () => goTo("dream"),
   open: goTo,
   cat: goTo,
   whoami: () => "carrie markusen. physical + digital designer.",
@@ -139,17 +147,18 @@ const commands = {
   },
   sudo: () => "nice try.",
   exit: () => "there is no exit. only more ideas.",
-  silly: () => setSilly(true),
+  silly: () => endModes("silly") || setSilly(true),
   "too silly": () => setSilly(false),
   cowsay: (words) => {
     nextHint = "type so cute";
     return cowsay(words || "moo.");
   },
   "so cute": () => ":)",
-  sky: () => setSky(true),
+  sky: () => endModes("sky") || setSky(),
   sunset: () => setSunset(true),
   daytime: () => setSunset(false),
-  holo: () => setHolo(true),
+  holo: () => endModes("holo") || setHolo(true),
+  rage: () => endModes("rage") || setRage(true),
   normal: () => backToNormal(),
 };
 
@@ -188,11 +197,27 @@ function setSunset(on) {
 // holoTilt runs from -1 to 1 on each axis; dream.js reads it too, to light its folds.
 const holoTilt = { x: 0, y: 0 };
 const holoTarget = { x: 0, y: 0 };
-let holoRunning = false;
+let holoOn = false;
+let holoFrameId = 0;
+let holoLast = 0;
+
+// The foil's big layers: a rainbow, fine lines and a glare behind the page, glitter in front.
+// They move by sliding and turning whole layers, which the graphics card does without redrawing them.
+const holoLayers = ["holo-foil", "holo-lines", "holo-glare", "holo-glitter holo-glitter-a", "holo-glitter holo-glitter-b"]
+  .map((names) => {
+    const layer = document.createElement("div");
+    layer.className = `holo-layer ${names}`;
+    layer.setAttribute("aria-hidden", "true");
+    return layer;
+  });
 
 function aimHolo(x, y) {
   holoTarget.x = Math.max(-1, Math.min(1, x));
   holoTarget.y = Math.max(-1, Math.min(1, y));
+  if (holoOn && !holoFrameId) {
+    holoLast = performance.now();
+    holoFrameId = requestAnimationFrame(holoFrame);
+  }
 }
 
 const holoPointer = (event) => aimHolo((event.clientX / window.innerWidth) * 2 - 1, (event.clientY / window.innerHeight) * 2 - 1);
@@ -202,54 +227,92 @@ const holoOrientation = (event) => {
   aimHolo(event.gamma / 30, (event.beta - 45) / 30);
 };
 
-// Each frame the tilt eases toward where it's aimed, so the light glides instead of jumping, and the
-// styles read it as CSS variables: --tx and --ty (-1 to 1), --mx and --my (where the glare sits, in %).
-function holoFrame() {
-  if (!holoRunning) return;
-  holoTilt.x += (holoTarget.x - holoTilt.x) * 0.12;
-  holoTilt.y += (holoTarget.y - holoTilt.y) * 0.12;
+// The tilt eases toward where it's aimed, so the light glides instead of jumping. Once it arrives, it stops
+// updating until the pointer moves again, so a still foil costs nothing.
+function holoFrame(now) {
+  holoFrameId = 0;
+  if (!holoOn) return;
+  const ease = 1 - Math.exp(-Math.min(0.1, Math.max(0, (now - holoLast) / 1000)) * 7);
+  holoLast = now;
+  holoTilt.x += (holoTarget.x - holoTilt.x) * ease;
+  holoTilt.y += (holoTarget.y - holoTilt.y) * ease;
+  const settled = Math.abs(holoTarget.x - holoTilt.x) < 0.001 && Math.abs(holoTarget.y - holoTilt.y) < 0.001;
+  if (settled) Object.assign(holoTilt, holoTarget);
+  paintHolo();
+  if (!settled) holoFrameId = requestAnimationFrame(holoFrame);
+}
+
+// Moves the layers, and sets --tx and --ty (-1 to 1) and --mx and --my (the pointer, in %) for the text
+// ink, lines and foil cards.
+function paintHolo() {
+  const { x, y } = holoTilt;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const [foil, lines, glare, glitterA, glitterB] = holoLayers;
+  foil.style.transform = `translate(${(-x * 0.22 * w).toFixed(1)}px, ${(-y * 0.22 * h).toFixed(1)}px) rotate(${(x * 30 + y * 15).toFixed(2)}deg)`;
+  lines.style.transform = `translate(${(x * 8).toFixed(1)}px, ${(y * 8).toFixed(1)}px)`;
+  glare.style.transform = `translate(${((0.5 + x * 0.5) * w).toFixed(1)}px, ${((0.5 + y * 0.5) * h).toFixed(1)}px)`;
+  glitterA.style.transform = `translate(${(-x * 14).toFixed(1)}px, ${(-y * 14).toFixed(1)}px)`;
+  glitterB.style.transform = `translate(${(x * 22).toFixed(1)}px, ${(y * 22).toFixed(1)}px)`;
+
   const style = document.documentElement.style;
-  style.setProperty("--tx", holoTilt.x.toFixed(4));
-  style.setProperty("--ty", holoTilt.y.toFixed(4));
-  style.setProperty("--mx", `${(50 + holoTilt.x * 50).toFixed(2)}%`);
-  style.setProperty("--my", `${(50 + holoTilt.y * 50).toFixed(2)}%`);
-  requestAnimationFrame(holoFrame);
+  style.setProperty("--tx", x.toFixed(3));
+  style.setProperty("--ty", y.toFixed(3));
+  style.setProperty("--mx", `${(50 + x * 50).toFixed(1)}%`);
+  style.setProperty("--my", `${(50 + y * 50).toFixed(1)}%`);
 }
 
 function setHolo(on) {
   const root = document.documentElement;
   root.classList.toggle("holo", on);
-  if (on && !holoRunning) {
-    holoRunning = true;
+  if (on && !holoOn) {
+    holoOn = true;
+    document.body.prepend(...holoLayers);
+    paintHolo();
     window.addEventListener("pointermove", holoPointer);
     window.addEventListener("deviceorientation", holoOrientation);
+    window.addEventListener("resize", paintHolo);
     // iPhones only share their tilt after asking. Typing the command counts as a tap, so the question can show.
     if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) {
       DeviceOrientationEvent.requestPermission().catch(() => {});
     }
-    requestAnimationFrame(holoFrame);
   } else if (!on) {
-    holoRunning = false;
+    holoOn = false;
+    for (const layer of holoLayers) layer.remove();
     window.removeEventListener("pointermove", holoPointer);
     window.removeEventListener("deviceorientation", holoOrientation);
+    window.removeEventListener("resize", paintHolo);
     for (const name of ["--tx", "--ty", "--mx", "--my"]) root.style.removeProperty(name);
   }
   return on ? "holo mode on. move around to tilt it." : "back to normal.";
 }
 
-// Esc (or "normal") ends whichever modes are on: sky, holo and silly.
-function backToNormal() {
+// Rage mode: the terminal in blood red, with an acid-wash texture over everything (styles at the end of
+// styles.css); dream.js grows sharp strands, slowly. Esc ends it; like silly mode it lasts until the page changes.
+function setRage(on) {
   const root = document.documentElement;
-  const inSky = root.classList.contains("sky");
-  const inHolo = root.classList.contains("holo");
-  const inSilly = root.classList.contains("silly");
-  if (!inSky && !inHolo && !inSilly) return "already normal.";
-  if (inSilly) setSilly(false);
-  if (inSky) {
+  root.classList.toggle("rage", on);
+  return on ? "rage mode on." : "back to normal.";
+}
+
+// Modes take turns: switching one on first ends any other, so they never mix. Ends every mode except
+// `keep` (or all of them), and returns nothing, so a command can read `endModes("holo") || setHolo(true)`.
+function endModes(keep) {
+  const root = document.documentElement;
+  if (keep !== "silly" && root.classList.contains("silly")) setSilly(false);
+  if (keep !== "rage" && root.classList.contains("rage")) setRage(false);
+  if (keep !== "holo" && root.classList.contains("holo")) setHolo(false);
+  if (keep !== "sky" && root.classList.contains("sky")) {
     sky.stop();
     root.classList.remove("sky", "sunset");
   }
-  if (inHolo) setHolo(false);
+}
+
+// Esc (or "normal") ends whichever mode is on.
+function backToNormal() {
+  const root = document.documentElement;
+  if (!["sky", "holo", "rage", "silly"].some((mode) => root.classList.contains(mode))) return "already normal.";
+  endModes();
   return "back to normal.";
 }
 
@@ -257,7 +320,7 @@ function backToNormal() {
 function defaultHint() {
   const root = document.documentElement;
   if (root.classList.contains("sky")) return root.classList.contains("sunset") ? "type daytime" : "type sunset";
-  if (root.classList.contains("holo")) return "press esc";
+  if (root.classList.contains("holo") || root.classList.contains("rage")) return "press esc";
   return root.classList.contains("silly") ? "type too silly" : "type help";
 }
 
@@ -299,6 +362,21 @@ function cowsay(words) {
   ].join("\n");
 }
 
+// Finds the command a typed line asks for. Two-word commands (like "too silly") are looked up whole first.
+function findCommand(line) {
+  const [name, ...args] = line.trim().split(/\s+/);
+  const command = commands[line.trim().toLowerCase().replace(/\s+/g, " ")] || commands[name.toLowerCase()];
+  return command ? () => command(args.join(" ")) : null;
+}
+
+// Runs a typed line, shows its reply above the status bar, and shows the suggested next command (or the usual hint).
+function runCommand(line) {
+  const command = findCommand(line);
+  document.getElementById("cli-output").textContent = command ? command() : `command not found: ${line.trim().split(/\s+/)[0]}. try help`;
+  document.getElementById("cli-input").placeholder = nextHint || defaultHint();
+  nextHint = "";
+}
+
 function setupCli() {
   const form = document.getElementById("cli");
   const input = document.getElementById("cli-input");
@@ -317,14 +395,7 @@ function setupCli() {
     history.push(line);
     historyIndex = history.length;
 
-    // Two-word commands (like "too silly") are looked up whole first.
-    const [name, ...args] = line.split(/\s+/);
-    const command = commands[line.toLowerCase().replace(/\s+/g, " ")] || commands[name.toLowerCase()];
-    output.textContent = command ? command(args.join(" ")) : `command not found: ${name}. try help`;
-
-    // Show the suggested next command, or the usual hint.
-    input.placeholder = nextHint || defaultHint();
-    nextHint = "";
+    runCommand(line);
   });
 
   // Up and down arrows walk through earlier commands, like a real shell.
@@ -344,7 +415,7 @@ function setupCli() {
   document.addEventListener("keydown", (event) => {
     const root = document.documentElement;
     if (event.key !== "Escape" || root.classList.contains("booting")) return;
-    if (!["sky", "holo", "silly"].some((mode) => root.classList.contains(mode))) return;
+    if (!["sky", "holo", "rage", "silly"].some((mode) => root.classList.contains(mode))) return;
     output.textContent = backToNormal();
     input.placeholder = defaultHint();
   });

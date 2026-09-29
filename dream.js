@@ -29,13 +29,16 @@ void main() {
 }`;
 
 // Starting state: chemical A everywhere, plus B wherever the :) was drawn.
+// Each spot in the :) starts with a slightly different amount of B, so the folds grow differently every time.
 const seedShader = `#version 300 es
 precision highp float;
 uniform sampler2D seed;
+uniform float salt;  // a random number, new for every start
 in vec2 uv;
 out vec4 color;
 void main() {
-  color = vec4(1.0, step(0.5, texture(seed, uv).a), 0.0, 1.0);
+  float amount = fract(sin(dot(uv * 997.0 + salt, vec2(12.9898, 78.233))) * 43758.5453);
+  color = vec4(1.0, step(0.5, texture(seed, uv).a) * (0.55 + 0.45 * amount), 0.0, 1.0);
 }`;
 
 // One step of the simulation. The red channel holds chemical A, green holds chemical B.
@@ -47,6 +50,7 @@ uniform float time;        // seconds
 uniform vec2 brushFrom;    // the line the pointer dragged along, in cells
 uniform vec2 brushTo;
 uniform float brushSize;   // 0 when nothing is being dragged
+uniform float rage;        // 1 in rage mode: rules that grow sharp strands, stretched downward like drips
 in vec2 uv;
 out vec4 color;
 
@@ -58,13 +62,17 @@ void main() {
   vec2 here = at(vec2(0.0));
 
   // How much each chemical differs from its neighbours: this is what makes them spread.
-  vec2 spread = -here
-    + 0.2 * (at(vec2(1.0, 0.0)) + at(vec2(-1.0, 0.0)) + at(vec2(0.0, 1.0)) + at(vec2(0.0, -1.0)))
+  // In rage mode they spread seven times as easily up and down as sideways, so growth runs in vertical strands.
+  float across = mix(1.0, 0.25, rage);
+  float down = mix(1.0, 1.75, rage);
+  vec2 spread = -here * (0.4 * across + 0.4 * down + 0.2)
+    + 0.2 * (across * (at(vec2(1.0, 0.0)) + at(vec2(-1.0, 0.0))) + down * (at(vec2(0.0, 1.0)) + at(vec2(0.0, -1.0))))
     + 0.05 * (at(vec2(1.0, 1.0)) + at(vec2(-1.0, 1.0)) + at(vec2(1.0, -1.0)) + at(vec2(-1.0, -1.0)));
 
   // Feed and kill rates drift across the screen and over time, so different areas grow different folds.
-  float feed = 0.0545 + 0.003 * sin(uv.x * 4.0 + time * 0.07) * cos(uv.y * 3.0 - time * 0.05);
-  float kill = 0.0625 + 0.0008 * sin(uv.y * 5.0 + time * 0.04);
+  // Rage mode feeds less and kills a little less, which grows thin, sharp strands instead of rounded coral.
+  float feed = mix(0.0545, 0.030, rage) + 0.003 * sin(uv.x * 4.0 + time * 0.07) * cos(uv.y * 3.0 - time * 0.05);
+  float kill = mix(0.0625, 0.0565, rage) + 0.0008 * sin(uv.y * 5.0 + time * 0.04);
 
   float reaction = here.r * here.g * here.g;
   vec2 next = here + vec2(
@@ -93,6 +101,8 @@ uniform float time;
 uniform float silly;  // 1 in silly mode, 0 otherwise
 uniform float holo;   // 1 in holo mode, 0 otherwise
 uniform vec2 tilt;    // holo mode's tilt, -1 to 1 on each axis
+uniform float rage;   // 1 in rage mode, 0 otherwise
+uniform vec3 red;     // rage mode's blood red
 in vec2 uv;
 out vec4 color;
 
@@ -126,6 +136,13 @@ void main() {
   float glint = pow(max(reflect(-holoLight, normal).z, 0.0), 30.0);
   vec3 holoLit = fold * (mix(film, vec3(1.0), 0.15) * (0.55 + 0.45 * diffuse) + vec3(glint));
   lit = mix(lit, holoLit, holo);
+
+  // Rage mode: hard-edged strands shaded like dark metal: near black in the creases, blood red on the faces,
+  // and a hot, almost white edge where the light catches.
+  float blade = smoothstep(0.22, 0.25, height(vec2(0.0)));
+  float hot = pow(max(reflect(-light, normal).z, 0.0), 40.0);
+  vec3 rageLit = blade * (red * (0.08 + 1.1 * pow(diffuse, 3.0)) + vec3(1.0, 0.78, 0.72) * hot * 0.9);
+  lit = mix(lit, rageLit, rage);
 
   // Outside the folds: black normally, see-through in silly and holo modes.
   float alpha = mix(1.0, fold, max(silly, holo));
@@ -214,7 +231,7 @@ function setup() {
   targets = [makeTarget(...grid), makeTarget(...grid)];
   current = 0;
 
-  // Draw a big :) on a hidden canvas the size of the grid, and use it as the starting B.
+  // Draw a big :) on a hidden canvas the size of the grid, and use it as the starting B. In rage mode it's a :( instead.
   const sketch = document.createElement("canvas");
   [sketch.width, sketch.height] = grid;
   const pen = sketch.getContext("2d");
@@ -222,7 +239,7 @@ function setup() {
   pen.font = `400 ${size}px "JetBrains Mono", monospace`;
   pen.textAlign = "center";
   pen.textBaseline = "middle";
-  pen.fillText(":)", grid[0] / 2, grid[1] / 2);
+  pen.fillText(document.documentElement.classList.contains("rage") ? ":(" : ":)", grid[0] / 2, grid[1] / 2);
 
   const seed = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, seed);
@@ -230,12 +247,25 @@ function setup() {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sketch);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  use(seedProgram, {});
+  use(seedProgram, { salt: Math.random() * 100 });
   run(targets[0], ...grid, seed);
   gl.deleteTexture(seed);
 }
 
+// The feed and kill rates drift over time; starting at a random point in that drift gives each visit a
+// different layout of rates, so the first folds don't always grow the same way.
+const rateStart = Math.random() * 1000;
+
+// Rage mode (the "rage" command): sharp strands grow from a :( in blood red.
+const rageRed = [215 / 255, 38 / 255, 46 / 255];  // --rage-red in styles.css
+let raging = false;
+
 function frame(now) {
+  // Entering or leaving rage mode plants a fresh face (:( in rage, :) otherwise), so no mode inherits the other's growth.
+  const rageNow = document.documentElement.classList.contains("rage");
+  if (rageNow !== raging) setup();
+  raging = rageNow;
+
   // In sky mode the clouds take the window's place, so the dream pauses until it ends.
   if (document.documentElement.classList.contains("sky")) {
     requestAnimationFrame(frame);
@@ -247,12 +277,15 @@ function frame(now) {
 
   use(stepProgram, {
     grid,
-    time: now / 1000,
+    time: now / 1000 + rateStart,
     brushFrom: brush ? brush.from : [0, 0],
     brushTo: brush ? brush.to : [0, 0],
     brushSize: brush ? brushSize : 0,
+    rage: raging ? 1 : 0,
   });
-  for (let i = 0; i < (waiting ? 0 : stepsPerFrame); i++) {
+  // Rage mode grows at half speed.
+  const steps = waiting ? 0 : raging ? Math.ceil(stepsPerFrame / 2) : stepsPerFrame;
+  for (let i = 0; i < steps; i++) {
     run(targets[1 - current], ...grid, targets[current].texture);
     current = 1 - current;
   }
@@ -266,6 +299,8 @@ function frame(now) {
     silly: document.documentElement.classList.contains("silly") ? 1 : 0,
     holo: document.documentElement.classList.contains("holo") ? 1 : 0,
     tilt: [holoTilt.x, holoTilt.y],
+    rage: raging ? 1 : 0,
+    red: rageRed,
   });
   run(null, canvas.width, canvas.height, targets[current].texture);
   requestAnimationFrame(frame);
