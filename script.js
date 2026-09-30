@@ -3,6 +3,7 @@
   1. Boot screen (home page only): types the welcome line, asks for the password, prints a boot log, then shows the site.
   2. Command line in the status bar: type help, ls, cd portfolio, open resume, and so on.
   3. Clock and uptime in the status bar.
+  4. Web experiments (sketchbook page): open one in a window over the right-hand viewport.
 */
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,7 +22,7 @@ const bootLog = [
   "[ ok ] mounting /dev/imagination",
   "[ ok ] synapse bus online ......... 86,000,000,000 nodes",
   "[ ok ] loading palette ............ 16,777,216 colors",
-  "[ ok ] indexing ~/placeholder ..... 1 found",
+  "[ ok ] indexing ~/sketchbook ...... 1 found",
   "[ ok ] warming dream cache",
   "[ ok ] aligning memory to the northern stars",
   "",
@@ -109,7 +110,7 @@ async function runBoot() {
 const places = [
   { names: ["project-1", "project1", "p1", "1"], url: "project-1.html" },
   { names: ["resume.txt", "resume", "cv", "about"], url: "resume.html" },
-  { names: ["placeholder"], url: "placeholder.html" },
+  { names: ["sketchbook"], url: "sketchbook.html" },
   { names: ["portfolio", "work"], url: "portfolio.html" },
   { names: ["consent"], url: "consent.html" },
   { names: ["medica"], url: "medica.html" },
@@ -121,7 +122,7 @@ const places = [
 ];
 
 function findPlace(name) {
-  const clean = (name || "").toLowerCase().replace(/\/$/, "").replace(/^(placeholder|portfolio)\//, "");
+  const clean = (name || "").toLowerCase().replace(/\/$/, "").replace(/^(sketchbook|portfolio)\//, "");
   return places.find((place) => place.names.includes(clean));
 }
 
@@ -134,10 +135,10 @@ function goTo(name) {
 
 const commands = {
   help: () =>
-    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, rage, cowsay <words>, sky\n" +
-    "places:   portfolio, consent, medica, thrivent, ahip, two-mules, placeholder, project-1,\n" +
+    "commands: ls, cd <place>, open <place>, whoami, pwd, date, clear, reboot, silly, holo, rage, cowsay <words>, sky, quote\n" +
+    "places:   portfolio, consent, medica, thrivent, ahip, two-mules, sketchbook, project-1,\n" +
     "          resume, home",
-  ls: () => "portfolio/  sketchbook/  placeholder/  resume.txt",
+  ls: () => "portfolio/  sketchbook/  resume.txt",
   cd: (name) => goTo(name || "~"),
   open: goTo,
   cat: goTo,
@@ -159,6 +160,8 @@ const commands = {
     return cowsay(words || "moo.");
   },
   "so cute": () => ":)",
+  quote: () => showQuote(),
+  wow: () => "",
   sky: () => endModes("sky") || setSky(),
   sunset: () => setSunset(true),
   daytime: () => setSunset(false),
@@ -166,6 +169,29 @@ const commands = {
   rage: () => endModes("rage") || setRage(true),
   normal: () => backToNormal(),
 };
+
+// Quotes for the "quote" command: each one shows the next, looping back to the first. Add more to the list:
+// the quote's text, and who it's by (shown in the command line's hint while the quote is up).
+// A quote stays above the command line until "wow", Esc, or another command.
+const quotes = [
+  {
+    text: "Okay, if you can figure out the tilt, you can figure out any damn thing you choose. Because even light has weight, and when the note of a trainwhistle suddenly drops its Doppler effect and when an airplane breaks the sound barrier that bang isn't the applause of the angels or the flatulence of demons but only air collapsing back into place. I gave you the tilt and then I sat back about halfway up the auditorium to watch the show. I got nothing else to say, except that two and two makes four, the lights in the sky are stars, and if there's blood grownups can see it as well as kids, and dead boys stay dead.",
+    by: "God, via Stephen King (It)",
+  },
+];
+
+// Whether a quote is showing right now, so Esc knows to clear it.
+let quoteShowing = false;
+
+// Shows the next quote. Where the rotation is carries across pages during a visit.
+function showQuote() {
+  let next = 0;
+  try { next = Number(sessionStorage.getItem("quote") || 0) % quotes.length; } catch (e) {}
+  try { sessionStorage.setItem("quote", String((next + 1) % quotes.length)); } catch (e) {}
+  quoteShowing = true;
+  nextHint = quotes[next].by;
+  return quotes[next].text;
+}
 
 // A command can set this to suggest what to type next. Otherwise the hint goes back to "type help".
 let nextHint = "";
@@ -289,7 +315,7 @@ function setHolo(on) {
     window.removeEventListener("resize", paintHolo);
     for (const name of ["--tx", "--ty", "--mx", "--my"]) root.style.removeProperty(name);
   }
-  return on ? "holo mode on. move around to tilt it." : "back to normal.";
+  return on ? "holo mode on. move around to tilt." : "back to normal.";
 }
 
 // Rage mode: the terminal in blood red, with an acid-wash texture over everything (styles at the end of
@@ -377,8 +403,11 @@ function findCommand(line) {
 // Runs a typed line, shows its reply above the status bar, and shows the suggested next command (or the usual hint).
 function runCommand(line) {
   const command = findCommand(line);
+  quoteShowing = false;  // any command replaces a showing quote ("quote" sets it again)
   document.getElementById("cli-output").textContent = command ? command() : `command not found: ${line.trim().split(/\s+/)[0]}. try help`;
-  document.getElementById("cli-input").placeholder = nextHint || defaultHint();
+  const input = document.getElementById("cli-input");
+  input.placeholder = nextHint || defaultHint();
+  input.classList.toggle("quote-by", quoteShowing);  // a quote's attribution shows in italics
   nextHint = "";
 }
 
@@ -416,10 +445,18 @@ function setupCli() {
     input.value = history[historyIndex] || "";
   });
 
-  // Esc anywhere ends the modes. It only answers when a mode was on, so Esc stays quiet the rest of the time.
+  // Esc anywhere clears a showing quote first; otherwise it ends the modes. It only answers when there's
+  // something to clear, so Esc stays quiet the rest of the time.
   document.addEventListener("keydown", (event) => {
     const root = document.documentElement;
     if (event.key !== "Escape" || root.classList.contains("booting")) return;
+    if (quoteShowing) {
+      quoteShowing = false;
+      output.textContent = "";
+      input.placeholder = defaultHint();
+      input.classList.remove("quote-by");
+      return;
+    }
     if (!["sky", "holo", "rage", "silly"].some((mode) => root.classList.contains(mode))) return;
     output.textContent = backToNormal();
     input.placeholder = defaultHint();
@@ -471,6 +508,90 @@ if (!document.getElementById("boot")) {
   try { sessionStorage.setItem("booted", "1"); } catch (e) {}
 }
 
+/* ---------- 4. Web experiments (sketchbook) ---------- */
+
+// Clicking an experiment opens it in a window that exactly covers the right-hand viewport: a title bar showing the
+// shader's path, and the experiment under it, with an x in a box in its top right corner to close it (Esc closes
+// it too), styled like the experiments' own controls.
+// Without JavaScript, the link simply opens the experiment on its own page.
+function setupExperiments() {
+  const main = document.getElementById("main");
+  const statusbar = document.querySelector(".statusbar");
+  const links = document.querySelectorAll("a[data-experiment]");
+  if (!main || !links.length) return;
+  let open = null;
+
+  // Cover the visible part of the right-hand viewport: inside the screen, and above the status bar (on phones
+  // it sticks over the window).
+  function place() {
+    if (!open) return;
+    const box = main.getBoundingClientRect();
+    const top = Math.max(box.top, 0);
+    const bottom = Math.min(box.bottom, window.innerHeight, statusbar ? statusbar.getBoundingClientRect().top : Infinity);
+    Object.assign(open.window.style, {
+      top: `${top}px`,
+      left: `${box.left}px`,
+      width: `${box.width}px`,
+      height: `${Math.max(0, bottom - top)}px`,
+    });
+  }
+
+  function close() {
+    if (!open) return;
+    open.window.remove();
+    open.link.focus({ preventScroll: true });
+    open = null;
+    window.removeEventListener("resize", place);
+    window.removeEventListener("scroll", place, true);
+  }
+
+  for (const link of links) {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      close();
+      const win = document.createElement("div");
+      win.className = "experiment-window";
+      win.setAttribute("role", "dialog");
+      win.setAttribute("aria-label", link.dataset.experiment);
+      const bar = document.createElement("div");
+      bar.className = "titlebar experiment-titlebar";
+      const path = document.createElement("span");
+      path.className = "experiment-path";
+      path.textContent = link.dataset.path || link.dataset.experiment;
+      const frame = document.createElement("iframe");
+      frame.src = link.href;
+      frame.title = link.dataset.experiment;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "experiment-close";
+      button.setAttribute("aria-label", `close ${link.dataset.experiment}`);
+      button.textContent = "x";
+      button.addEventListener("click", close);
+      const stage = document.createElement("div");
+      stage.className = "experiment-stage";
+      stage.append(frame, button);
+      bar.append(path);
+      win.append(bar, stage);
+      document.body.appendChild(win);
+      open = { window: win, link };
+      place();
+      window.addEventListener("resize", place);
+      window.addEventListener("scroll", place, true);
+      button.focus({ preventScroll: true });
+    });
+  }
+
+  // Esc closes the window first (before it would end a mode). Once you click into an experiment, the keyboard
+  // belongs to it, so use the x.
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && open) {
+      event.stopPropagation();
+      close();
+    }
+  }, true);
+}
+
 setupCli();
 setupClock();
+setupExperiments();
 runBoot();

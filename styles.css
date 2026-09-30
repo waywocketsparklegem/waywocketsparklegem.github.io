@@ -423,8 +423,11 @@ body::after {
   background: var(--placeholder);
 }
 
-.shot img {
+.shot img,
+.shot video {
+  display: block;
   width: 100%;
+  height: auto;
 }
 
 .shot figcaption {
@@ -509,6 +512,11 @@ body::after {
   color: var(--green);
 }
 
+/* While a quote is showing, the hint is its attribution, in italics. */
+.cli input.quote-by::placeholder {
+  font-style: italic;
+}
+
 /* The command line's reply appears just above the status bar. */
 .cli-output {
   flex-basis: 100%;
@@ -570,6 +578,65 @@ body::after {
   .powering-on {
     animation: none;
   }
+}
+
+/* ---------- Web experiments window (sketchbook: click an experiment) ---------- */
+
+/* script.js sizes it to cover the right-hand viewport. It sits above the scanlines, so each experiment shows
+   exactly as it looks on its own. A title bar (the site's, with the shader's path) runs across the top. */
+.experiment-window {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--black);
+}
+
+.experiment-titlebar {
+  align-items: center;
+  background: var(--black);
+}
+
+/* The path, styled like the title bar paths on other pages. */
+.experiment-path {
+  color: var(--gray);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The experiment fills the rest of the window, with the close box over its top right corner. */
+.experiment-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.experiment-window iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* The close button: an x in a box, styled like the experiments' own controls (their slider box and sunset button):
+   20px in from the corner, a black box with a hairline white frame (the page's --rule), the status bar's 0.75rem
+   text. It inverts on hover. */
+.experiment-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 0.6rem 1rem;
+  border: var(--rule) solid var(--white);
+  background: rgba(0, 0, 0, 0.75);  /* 75% black, like the experiments' own buttons */
+  color: var(--white);
+  font: 100 0.75rem/1.6 var(--font);
+  cursor: pointer;
+}
+
+.experiment-close:hover,
+.experiment-close:focus-visible {
+  background: var(--white);
+  color: var(--black);
 }
 
 /* ---------- Portfolio theme (portfolio.html, class "portfolio-theme" on <html>) ---------- */
@@ -791,6 +858,13 @@ html.sky .window-body,
 html.sky .dream-canvas,
 html.sky #dream-hint,
 html.sky h1.titlebar-path {
+  visibility: hidden;
+}
+
+/* Bare minimum: only the sidebar's :), the name block, the command line and the uptime and clock stay.
+   The file tree and every title bar (path and labels) are hidden but keep their space, so nothing moves. */
+html.sky .tree,
+html.sky .titlebar {
   visibility: hidden;
 }
 
