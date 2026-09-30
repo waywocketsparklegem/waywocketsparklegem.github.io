@@ -153,7 +153,7 @@ const commands = {
   },
   sudo: () => "nice try.",
   exit: () => "there is no exit. only more ideas.",
-  silly: () => endModes("silly") || setSilly(true),
+  silly: () => startMode("silly", () => setSilly(true)),
   "too silly": () => setSilly(false),
   cowsay: (words) => {
     nextHint = "type so cute";
@@ -162,11 +162,11 @@ const commands = {
   "so cute": () => ":)",
   quote: () => showQuote(),
   wow: () => "",
-  sky: () => endModes("sky") || setSky(),
+  sky: () => startMode("sky", setSky),
   sunset: () => setSunset(true),
   daytime: () => setSunset(false),
-  holo: () => endModes("holo") || setHolo(true),
-  rage: () => endModes("rage") || setRage(true),
+  holo: () => startMode("holo", () => setHolo(true)),
+  rage: () => startMode("rage", () => setRage(true)),
   normal: () => backToNormal(),
 };
 
@@ -337,6 +337,15 @@ function endModes(keep) {
     sky.stop();
     root.classList.remove("sky", "sunset");
   }
+}
+
+// Modes are a moment of fun, not a new look for the site: they take turns, end when the page changes, and never
+// run over an open experiment (experiments have their own looks, and a mode on top was too much for the graphics
+// card). So a mode won't start while an experiment is open, and opening one ends the mode (setupExperiments).
+function startMode(name, turnOn) {
+  if (document.querySelector(".experiment-window")) return "close the experiment first.";
+  endModes(name);
+  return turnOn();
 }
 
 // Esc (or "normal") ends whichever mode is on.
@@ -549,6 +558,14 @@ function setupExperiments() {
     link.addEventListener("click", (event) => {
       event.preventDefault();
       close();
+      // Opening an experiment ends any mode (see startMode).
+      const root = document.documentElement;
+      const mode = ["sky", "holo", "rage", "silly"].find((m) => root.classList.contains(m));
+      if (mode) {
+        endModes();
+        document.getElementById("cli-output").textContent = `${mode} mode off.`;
+        document.getElementById("cli-input").placeholder = defaultHint();
+      }
       const win = document.createElement("div");
       win.className = "experiment-window";
       win.setAttribute("role", "dialog");
