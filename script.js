@@ -170,26 +170,35 @@ const commands = {
   normal: () => backToNormal(),
 };
 
-// Quotes for the "quote" command: each one shows the next, looping back to the first. Add more to the list:
-// the quote's text, and who it's by (shown in the command line's hint while the quote is up).
-// A quote stays above the command line until "wow", Esc, or another command.
+// Quotes for the "quote" command: the first one in the list shows first on a visit; after that, one is picked
+// at random each time (never the same one twice in a row).
+// Add more to the list: the quote's text, and who it's by (shown in the command line's hint while the quote is
+// up). Leave "by" out for a quote with no attribution.
+// A quote stays above the command line until the visitor does anything else (a key, click, tap or scroll).
 const quotes = [
   {
+    text: "way leads on to way,",
+  },
+  {
     text: "Okay, if you can figure out the tilt, you can figure out any damn thing you choose. Because even light has weight, and when the note of a trainwhistle suddenly drops its Doppler effect and when an airplane breaks the sound barrier that bang isn't the applause of the angels or the flatulence of demons but only air collapsing back into place. I gave you the tilt and then I sat back about halfway up the auditorium to watch the show. I got nothing else to say, except that two and two makes four, the lights in the sky are stars, and if there's blood grownups can see it as well as kids, and dead boys stay dead.",
-    by: "God, via Stephen King (It)",
   },
 ];
 
-// Whether a quote is showing right now, so Esc knows to clear it.
+// Whether a quote is showing right now, so the next key, click or scroll knows to clear it (setupCli).
 let quoteShowing = false;
 
-// Shows the next quote. Where the rotation is carries across pages during a visit.
+// Shows the first quote the first time, then a random one, skipping the one shown last. The last one is
+// remembered across pages during a visit.
 function showQuote() {
+  let last = -1;
+  try { last = Number(sessionStorage.getItem("quote") ?? -1); } catch (e) {}
   let next = 0;
-  try { next = Number(sessionStorage.getItem("quote") || 0) % quotes.length; } catch (e) {}
-  try { sessionStorage.setItem("quote", String((next + 1) % quotes.length)); } catch (e) {}
+  if (last !== -1 && quotes.length > 1) {
+    do next = Math.floor(Math.random() * quotes.length); while (next === last);
+  }
+  try { sessionStorage.setItem("quote", String(next)); } catch (e) {}
   quoteShowing = true;
-  nextHint = quotes[next].by;
+  nextHint = quotes[next].by || "";
   return quotes[next].text;
 }
 
@@ -269,13 +278,22 @@ function holoFrame(now) {
   holoTilt.y += (holoTarget.y - holoTilt.y) * ease;
   const settled = Math.abs(holoTarget.x - holoTilt.x) < 0.001 && Math.abs(holoTarget.y - holoTilt.y) < 0.001;
   if (settled) Object.assign(holoTilt, holoTarget);
-  paintHolo();
+  paintHolo(settled);
   if (!settled) holoFrameId = requestAnimationFrame(holoFrame);
 }
 
+// The text ink and foil cards (--tx, --ty, --mx, --my) and the lines' hue (--lx, --ly) are costly to change:
+// each change makes the browser restyle the whole page and repaint every piece of text. So while the layers
+// move every frame, these catch up a few times a second. Smaller numbers are smoother but heavier.
+const holoInkEvery = 50;     // milliseconds between text ink updates
+const holoLinesEvery = 200;  // milliseconds between line color updates
+let holoInkAt = -Infinity;
+let holoLinesAt = -Infinity;
+
 // Moves the layers, and sets --tx and --ty (-1 to 1) and --mx and --my (the pointer, in %) for the text
-// ink, lines and foil cards.
-function paintHolo() {
+// ink and foil cards, and --lx and --ly (-1 to 1) for the lines. `all` updates everything right away, for when
+// the tilt settles and the last step has to land exactly.
+function paintHolo(all = true) {
   const { x, y } = holoTilt;
   const w = window.innerWidth;
   const h = window.innerHeight;
@@ -287,10 +305,19 @@ function paintHolo() {
   glitterB.style.transform = `translate(${(x * 22).toFixed(1)}px, ${(y * 22).toFixed(1)}px)`;
 
   const style = document.documentElement.style;
-  style.setProperty("--tx", x.toFixed(3));
-  style.setProperty("--ty", y.toFixed(3));
-  style.setProperty("--mx", `${(50 + x * 50).toFixed(1)}%`);
-  style.setProperty("--my", `${(50 + y * 50).toFixed(1)}%`);
+  const now = performance.now();
+  if (all || now - holoInkAt >= holoInkEvery) {
+    holoInkAt = now;
+    style.setProperty("--tx", x.toFixed(3));
+    style.setProperty("--ty", y.toFixed(3));
+    style.setProperty("--mx", `${(50 + x * 50).toFixed(1)}%`);
+    style.setProperty("--my", `${(50 + y * 50).toFixed(1)}%`);
+  }
+  if (all || now - holoLinesAt >= holoLinesEvery) {
+    holoLinesAt = now;
+    style.setProperty("--lx", x.toFixed(3));
+    style.setProperty("--ly", y.toFixed(3));
+  }
 }
 
 function setHolo(on) {
@@ -313,7 +340,7 @@ function setHolo(on) {
     window.removeEventListener("pointermove", holoPointer);
     window.removeEventListener("deviceorientation", holoOrientation);
     window.removeEventListener("resize", paintHolo);
-    for (const name of ["--tx", "--ty", "--mx", "--my"]) root.style.removeProperty(name);
+    for (const name of ["--tx", "--ty", "--mx", "--my", "--lx", "--ly"]) root.style.removeProperty(name);
   }
   return on ? "holo mode on. move around to tilt." : "back to normal.";
 }
@@ -358,10 +385,19 @@ function backToNormal() {
 
 // The hint in the command line when no command has suggested anything.
 function defaultHint() {
+  if (experimentHint) return experimentHint;
   const root = document.documentElement;
   if (root.classList.contains("sky")) return root.classList.contains("sunset") ? "type daytime" : "type sunset";
   if (root.classList.contains("holo") || root.classList.contains("rage")) return "press esc";
   return root.classList.contains("silly") ? "type too silly" : "type help";
+}
+
+// What an open experiment wants the hint to say (see setupExperiments). It stays until the window closes.
+let experimentHint = "";
+
+function showHint() {
+  const input = document.getElementById("cli-input");
+  input.placeholder = defaultHint();
 }
 
 // cowsay: a cow says your words in a speech bubble. Lines wrap at 30 characters so the cow fits on a phone.
@@ -416,7 +452,6 @@ function runCommand(line) {
   document.getElementById("cli-output").textContent = command ? command() : `command not found: ${line.trim().split(/\s+/)[0]}. try help`;
   const input = document.getElementById("cli-input");
   input.placeholder = nextHint || defaultHint();
-  input.classList.toggle("quote-by", quoteShowing);  // a quote's attribution shows in italics
   nextHint = "";
 }
 
@@ -454,18 +489,24 @@ function setupCli() {
     input.value = history[historyIndex] || "";
   });
 
-  // Esc anywhere clears a showing quote first; otherwise it ends the modes. It only answers when there's
-  // something to clear, so Esc stays quiet the rest of the time.
+  // A quote goes away with whatever the visitor does next: any key, click, tap or scroll. (Changing page clears
+  // it too: each page starts with an empty reply line.) An Esc that clears a quote does nothing else.
+  function clearQuote(event) {
+    if (!quoteShowing) return;
+    quoteShowing = false;
+    output.textContent = "";
+    input.placeholder = defaultHint();
+    if (event.key === "Escape") event.stopImmediatePropagation();
+  }
+  document.addEventListener("keydown", clearQuote, true);
+  document.addEventListener("pointerdown", clearQuote, true);
+  document.addEventListener("wheel", clearQuote, { capture: true, passive: true });
+
+  // Esc anywhere ends the modes. It only answers when there's something to clear, so Esc stays quiet the rest
+  // of the time.
   document.addEventListener("keydown", (event) => {
     const root = document.documentElement;
     if (event.key !== "Escape" || root.classList.contains("booting")) return;
-    if (quoteShowing) {
-      quoteShowing = false;
-      output.textContent = "";
-      input.placeholder = defaultHint();
-      input.classList.remove("quote-by");
-      return;
-    }
     if (!["sky", "holo", "rage", "silly"].some((mode) => root.classList.contains(mode))) return;
     output.textContent = backToNormal();
     input.placeholder = defaultHint();
@@ -537,6 +578,19 @@ function setupExperiments() {
     const box = main.getBoundingClientRect();
     const top = Math.max(box.top, 0);
     const bottom = Math.min(box.bottom, window.innerHeight, statusbar ? statusbar.getBoundingClientRect().top : Infinity);
+    if (open.theme) {
+      // A themed experiment fills the whole screen, behind the site's see-through panels (styles.css). Its title
+      // bar and close box stay over the right-hand viewport, and it's told where the panels are, so it can keep
+      // its own controls clear of them.
+      Object.assign(open.window.style, { top: "0", left: "0", width: "100%", height: "100%" });
+      Object.assign(open.bar.style, { position: "absolute", top: `${top}px`, left: `${box.left}px`, width: `${box.width}px` });
+      const barBottom = top + open.bar.offsetHeight;
+      open.button.style.top = `${barBottom + 20}px`;
+      open.frame.contentWindow.postMessage({
+        inset: { top: barBottom, right: 0, bottom: window.innerHeight - bottom, left: box.left },
+      }, "*");
+      return;
+    }
     Object.assign(open.window.style, {
       top: `${top}px`,
       left: `${box.left}px`,
@@ -548,6 +602,11 @@ function setupExperiments() {
   function close() {
     if (!open) return;
     open.window.remove();
+    if (open.theme) document.documentElement.classList.remove(open.theme);
+    if (experimentHint) {
+      experimentHint = "";
+      showHint();
+    }
     open.link.focus({ preventScroll: true });
     open = null;
     window.removeEventListener("resize", place);
@@ -590,13 +649,27 @@ function setupExperiments() {
       bar.append(path);
       win.append(bar, stage);
       document.body.appendChild(win);
-      open = { window: win, link };
+      // An experiment can bring a theme for the site while it's open (data-theme on its link: a class on <html>).
+      const theme = link.dataset.theme || "";
+      if (theme) root.classList.add(theme);
+      open = { window: win, link, frame, bar, button, theme };
+      frame.addEventListener("load", place);
       place();
       window.addEventListener("resize", place);
       window.addEventListener("scroll", place, true);
       button.focus({ preventScroll: true });
     });
   }
+
+  // An experiment can set the command line's hint, by sending { hint: "..." } from its page (the cloud simulator
+  // does). Only the open experiment is listened to.
+  window.addEventListener("message", (event) => {
+    if (!open || event.source !== open.frame.contentWindow) return;
+    const hint = event.data && event.data.hint;
+    if (typeof hint !== "string") return;
+    experimentHint = hint.slice(0, 300);
+    showHint();
+  });
 
   // Esc closes the window first (before it would end a mode). Once you click into an experiment, the keyboard
   // belongs to it, so use the x.

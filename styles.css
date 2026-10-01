@@ -24,7 +24,7 @@
   --h2-size: 1.25rem;
   --body-size: 0.875rem;
 
-  --sidebar-width: 25%;
+  --sidebar-width: 20%;
   --gutter: clamp(1rem, 3vw, 2.5rem);
   --glow: 0 0 6px rgba(3, 249, 0, 0.45);
 
@@ -508,12 +508,9 @@ body::after {
   outline: none;
 }
 
+/* The hint (what carrie@brain says, like "type help") is italic; what you type is not. */
 .cli input::placeholder {
   color: var(--green);
-}
-
-/* While a quote is showing, the hint is its attribution, in italics. */
-.cli input.quote-by::placeholder {
   font-style: italic;
 }
 
@@ -625,7 +622,7 @@ body::after {
   position: absolute;
   top: 20px;
   right: 20px;
-  padding: 0.6rem 1rem;
+  padding: 0.35rem 0.6rem;
   border: var(--rule) solid var(--white);
   background: rgba(0, 0, 0, 0.75);  /* 75% black, like the experiments' own buttons */
   color: var(--white);
@@ -637,6 +634,57 @@ body::after {
 .experiment-close:focus-visible {
   background: var(--white);
   color: var(--black);
+}
+
+/* ---------- Clouds theme (while the cloud simulator is open on the sketchbook: class "clouds" on <html>) ---------- */
+
+/* The simulator fills the whole screen (script.js), and the site sits over it: the sidebar, title bar and status
+   bar become 60% black panels, like the simulator's own buttons (and the close box matches), so the sky and clouds show through them dimly.
+   Green turns white. No scanlines or vignette over the sky. */
+html.clouds {
+  --green: var(--white);
+  --glow: 0 0 6px rgba(252, 252, 252, 0.45);
+  background: #1f5fb8;  /* the simulator's sky blue, while it loads */
+}
+
+html.clouds body {
+  background: transparent;
+}
+
+html.clouds body::after {
+  display: none;
+}
+
+/* The simulator goes behind the sidebar and status bar, which stay on top. */
+html.clouds .experiment-window {
+  z-index: 1;
+  background: transparent;
+}
+
+html.clouds .sidebar {
+  position: relative;
+  z-index: 2;
+}
+
+/* The page's own title bar hides; the simulator's (with its path) takes its place, above the sky. */
+html.clouds #main .titlebar {
+  visibility: hidden;
+}
+
+html.clouds .experiment-titlebar {
+  z-index: 1;
+}
+
+html.clouds .sidebar,
+html.clouds .statusbar,
+html.clouds .experiment-titlebar,
+html.clouds .experiment-close {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+html.clouds .experiment-close:hover,
+html.clouds .experiment-close:focus-visible {
+  background: var(--white);
 }
 
 /* ---------- Portfolio theme (portfolio.html, class "portfolio-theme" on <html>) ---------- */
@@ -871,10 +919,13 @@ html.sky .titlebar {
 /* ---------- Holo mode (the "holo" command; Esc turns it off) ---------- */
 
 /* script.js sets the tilt as it follows the mouse (or the phone's tilt):
-   --tx and --ty run from -1 to 1, and --mx and --my are where the glare sits. Straight on until it moves. */
+   --tx and --ty run from -1 to 1, and --mx and --my are where the glare sits. Straight on until it moves.
+   --lx and --ly are the same tilt for the lines' hue, updated less often (it's subtle, and costly to change). */
 html.holo {
   --tx: 0;
   --ty: 0;
+  --lx: 0;
+  --ly: 0;
   --mx: 50%;
   --my: 50%;
   /* The ink is mostly dark, like real holo seen from the wrong angle, with narrow bands of color that
@@ -886,8 +937,8 @@ html.holo {
   /* The site's green (selection, focus outlines, the cursor) turns dark ink too. */
   --green: var(--holo-dark);
   --glow: none;
-  --holo-line: hsl(calc(265 + var(--tx) * 70 + var(--ty) * 40) 70% 45% / 0.55);
-  --holo-solid: hsl(calc(265 + var(--tx) * 70 + var(--ty) * 40) 70% 16%);
+  --holo-line: hsl(calc(265 + var(--lx) * 70 + var(--ly) * 40) 70% 45% / 0.55);
+  --holo-solid: hsl(calc(265 + var(--lx) * 70 + var(--ly) * 40) 70% 16%);
 
   /* The foil is drawn by the layers below (script.js adds them). This plain rainbow shows behind them. */
   background: linear-gradient(135deg, #ffabe0, #b0bbff, #93f7df, #ffee8f, #ffb894, #d4a3ff, #95e2ff);

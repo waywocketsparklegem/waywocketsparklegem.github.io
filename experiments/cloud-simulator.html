@@ -19,21 +19,80 @@
     width: 100vw;
     height: 100vh;
   }
-  /* The sunset/daytime switch, in carriemarkusen.net's terminal style: a black box with a hairline white frame (0.5px) and
-     JetBrains Mono Thin in lowercase, at the size of the site's status bar text. It inverts on hover. */
-  #mode {
+  /* The controls sit in the bottom right corner, stacked: cloud cover, cloud type, then daytime/sunset. */
+  #controls {
     position: fixed;
     right: 20px;
     bottom: 20px;
-    padding: 0.6rem 1rem;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;  /* the empty space around the bars doesn't block anything */
+  }
+  /* Each control is a bar in carriemarkusen.net's terminal style: a black box with a hairline white frame (0.5px) and
+     JetBrains Mono Thin in lowercase, at the size of the site's status bar text. */
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.25rem 0.5rem;
+    max-width: 44rem;
+    padding: 0.2rem 0.35rem;
     border: 0.5px solid #fcfcfc;
-    background: rgba(0, 0, 0, 0.75);  /* 75% black, so the sky shows through a little */
+    background: rgba(0, 0, 0, 0.6);  /* 60% black, so the sky shows through a little */
     color: #fcfcfc;
     font: 100 0.75rem/1.6 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    pointer-events: auto;
+  }
+  /* The choices in a bar. The current one has brackets around it; the others keep the brackets' space
+     (see-through), so nothing shifts when the choice changes. Choices invert on hover. */
+  .bar button {
+    padding: 0.15rem 0.2rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
     cursor: pointer;
   }
-  #mode:hover, #mode:focus-visible { background: #fcfcfc; color: #000000; }
-  #mode:focus-visible { outline: 0.5px dashed #fcfcfc; outline-offset: 3px; }
+  .bar button::before { content: "[ "; }
+  .bar button::after { content: " ]"; }
+  .bar button[aria-pressed="false"]::before,
+  .bar button[aria-pressed="false"]::after { color: transparent; }
+  .bar button:hover, .bar button:focus-visible { background: #fcfcfc; color: #000000; }
+  .bar button:focus-visible { outline: 0.5px dashed #fcfcfc; outline-offset: 3px; }
+  /* Cloud cover: a hairline track with a small square handle, between its label and its number. */
+  .bar label { padding: 0.15rem 0.2rem; }
+  #cover {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12rem;
+    height: 1.5rem;
+    margin: 0;
+    background: none;
+    cursor: pointer;
+  }
+  #cover::-webkit-slider-runnable-track { height: 0.5px; background: #fcfcfc; }
+  #cover::-moz-range-track { height: 0.5px; background: #fcfcfc; }
+  #cover::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-top: -0.3rem;
+    border: 0;
+    border-radius: 0;
+    background: #fcfcfc;
+  }
+  #cover::-moz-range-thumb { width: 0.6rem; height: 0.6rem; border: 0; border-radius: 0; background: #fcfcfc; }
+  #cover:focus-visible { outline: 0.5px dashed #fcfcfc; outline-offset: 3px; }
+  /* The number is wide enough for "100%", so the slider doesn't shift as it changes. */
+  #cover-value {
+    width: 4ch;
+    padding: 0.15rem 0.2rem;
+    text-align: right;
+  }
   #fallback {
     position: fixed;
     inset: 0;
@@ -47,7 +106,19 @@
 </head>
 <body>
 <canvas id="sky"></canvas>
-<button id="mode" type="button" aria-pressed="false">[ sunset ]</button>
+<div id="controls">
+  <div class="bar">
+    <label for="cover">cover</label>
+    <input id="cover" type="range" min="0" max="100" step="1" value="50">
+    <output id="cover-value" for="cover">50%</output>
+  </div>
+  <!-- The script below adds a button for each cloud type. -->
+  <div class="bar" id="types" role="group" aria-label="cloud type"></div>
+  <div class="bar" role="group" aria-label="time of day">
+    <button id="daytime" type="button" aria-pressed="true">daytime</button>
+    <button id="sunset" type="button" aria-pressed="false">sunset</button>
+  </div>
+</div>
 <div id="fallback">Your browser doesn't support WebGL, so the clouds can't render.</div>
 
 <script id="vert" type="x-shader/x-vertex">
@@ -60,6 +131,15 @@ precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
 uniform float uSunset; // 0 = daytime, 1 = sunset
+uniform float uCover;  // the cloud cover picked with the buttons: 0 = clear, 1 = overcast
+// Two cloud types, so that changing type dissolves from one to the other (uMix: 0 = all A, 1 = all B).
+// Each type is two vec4s, set from the TYPES list in the script below:
+// (scale, stretch, softness, extra cover) and (wisps, shading, opacity, darkness).
+uniform vec4 uA1;
+uniform vec4 uA2;
+uniform vec4 uB1;
+uniform vec4 uB2;
+uniform float uMix;
 
 // --- 3D value noise: the third dimension is time, so clouds morph instead of just sliding ---
 float hash(vec3 p) {
@@ -93,15 +173,84 @@ float fbm(vec2 p, float t) {
   return v;
 }
 
-// Cloud density at a point in the sky
-float density(vec2 p, float t, float coverage) {
+// How thick the cloud is at a point in the sky, for one cloud type (k1, k2: see uA1 and uA2 above):
+// 0 at its edge, 1 where it turns solid, and it keeps rising inside big clumps, so they keep their light and shade
+float thickness(vec2 p, float t, float coverage, vec4 k1, vec4 k2) {
   vec2 wind = vec2(t * 0.012, t * 0.003);
-  vec2 q = p + wind;
+  // Every type drifts with the same wind; its scale and sideways stretch only change the shapes
+  vec2 q = vec2((p.x + wind.x) / k1.y, p.y + wind.y) * k1.x;
   // Domain warp gives billowy shapes; it evolves very slowly so clouds do not swirl
   vec2 warp = vec2(fbm(q * 0.5, t * 0.006 + 3.1),
                    fbm(q * 0.5 + vec2(5.2, 1.3), t * 0.006 + 7.7));
   float n = fbm(q + warp * 0.7, t * 0.04);
-  return smoothstep(coverage, coverage + 0.32, n);
+  // Wisps, like cirrus: soft strands combed out along a slanting, curving flow, that thin out and fade at their ends
+  if (k2.x > 0.0) {
+    vec2 a = mat2(0.95, 0.31, -0.31, 0.95) * q;  // the strands slant about 18 degrees
+    vec2 r = vec2(a.x * 0.3, a.y * 3.0) + warp * 2.2;
+    float ridge = 1.0 - abs(2.0 * fbm(r, t * 0.03 + 21.0) - 1.0);
+    // Strands gather in patches and fade out between them, instead of running on forever
+    float patches = smoothstep(0.35, 0.75, fbm(q * 0.6 + 11.0, t * 0.02 + 5.0));
+    // Fine fibers along each strand, for cirrus's hair-like, silky look
+    float fibers = fbm(vec2(r.x * 2.0, r.y * 18.0), t * 0.02 + 33.0);
+    n = mix(n, pow(ridge, 3.0) * patches * (0.7 + 0.6 * fibers), k2.x);
+  }
+  float edge = coverage - k1.w;
+  return (n - edge) / k1.z;
+}
+
+// The sky with one type of cloud over it, lit for daytime and sunset
+vec3 cloudy(vec2 p, float t, float coverage, vec4 k1, vec4 k2, vec3 sky, float s, float sunLight) {
+  float th = thickness(p, t, coverage, k1, k2);
+  if (th <= 0.0) return sky;  // clear sky: no need to work out the light
+  float d = smoothstep(0.0, 1.0, th);  // how solid it looks: see-through at the edges, solid inside
+
+  // Self-shadowing: compare with density a little way toward the sun.
+  // Day and sunset are lit separately (sun upper left by day, low on the right
+  // at sunset) and then cross-faded, so switching modes is a gentle dissolve
+  // rather than light sweeping across the clouds.
+  float litDay = 0.0;
+  float litDusk = 0.0;
+  if (s < 1.0) {
+    float thSun = thickness(p + vec2(-0.6, 0.8) * 0.06, t, coverage, k1, k2);
+    litDay = clamp(0.78 + 0.22 * (1.0 - k2.y) + (th - thSun) * 2.2 * k2.y, 0.0, 1.0);
+  }
+  if (s > 0.0) {
+    // At sunset most of each cloud falls in shadow and only the sun-facing parts glow. Flat layers (little
+    // shading) catch the low sun across their whole underside, so they glow more evenly.
+    float thSun = thickness(p + vec2(0.35, -0.94) * 0.06, t, coverage, k1, k2);
+    litDusk = clamp(0.48 + 0.32 * (1.0 - k2.y) + (th - thSun) * 3.2 * k2.y, 0.0, 1.0);
+  }
+
+  // Sunset clouds, graded by distance from the sun like real evening light, and rich:
+  // gold closest to it, then coral-orange, then rose-pink farther away;
+  // shadows are dusky violet, warming to a deep red-rose near the sun
+  float warmth = smoothstep(0.3, 0.8, sunLight);
+  float nearest = smoothstep(0.6, 0.9, sunLight);
+  vec3 duskLit = mix(vec3(0.98, 0.52, 0.60), vec3(1.0, 0.57, 0.36), warmth);
+  duskLit = mix(duskLit, vec3(1.0, 0.76, 0.40), nearest);
+  duskLit *= 0.82 + 0.22 * sunLight;
+  vec3 duskShadow = mix(vec3(0.25, 0.18, 0.40), vec3(0.52, 0.26, 0.31), warmth);
+
+  vec3 dayCloud = mix(vec3(0.62, 0.70, 0.84), vec3(1.0, 0.995, 0.98), litDay);
+  vec3 duskCloud = mix(duskShadow, duskLit, litDusk);
+  vec3 cloud = mix(dayCloud, duskCloud, s);
+  // Seen from below, the thickest parts let the least light through, so they're greyer (less so at sunset,
+  // when the low sun lights them from underneath)
+  cloud *= 1.0 - 0.18 * (1.0 - 0.6 * s) * k2.y * smoothstep(1.0, 4.0, th);
+
+  // Bright lining on thin edges: silver by day; at sunset, sunlight shining
+  // through thin edges glows gold, strongest near the sun
+  float edge = smoothstep(0.0, 0.35, d) * (1.0 - smoothstep(0.35, 0.8, d));
+  cloud += edge * mix(vec3(0.08), vec3(0.30, 0.17, 0.05) * sunLight, s);
+
+  // Rain clouds are heavier and greyer, darkest where they're thickest. At sunset the low sun lights their
+  // undersides, so most of the grey gives way to its colors.
+  cloud = mix(cloud, cloud * vec3(0.50, 0.53, 0.58), k2.w * (0.6 + 0.4 * d) * (1.0 - 0.55 * s));
+  // Sunset colors run richer still
+  float cloudLum = dot(cloud, vec3(0.299, 0.587, 0.114));
+  cloud = max(mix(vec3(cloudLum), cloud, 1.0 + 0.15 * s), 0.0);
+
+  return mix(sky, cloud, d * 0.96 * k2.z);
 }
 
 void main() {
@@ -136,48 +285,12 @@ void main() {
 
   vec3 sky = mix(daySky, duskSky, s);
 
-  // Coverage breathes slowly between wispy and fuller skies
-  float coverage = 0.50 + 0.06 * sin(t * 0.021) + 0.03 * sin(t * 0.053 + 1.3);
+  // Coverage follows the cover buttons (50% is where it always sat), and breathes slowly between wispy and fuller skies
+  float coverage = 0.50 + (0.5 - uCover) * 0.8 + 0.06 * sin(t * 0.021) + 0.03 * sin(t * 0.053 + 1.3);
 
-  float d = density(p, t, coverage);
-
-  // Self-shadowing: compare with density a little way toward the sun.
-  // Day and sunset are lit separately (sun upper left by day, low on the right
-  // at sunset) and then cross-faded, so switching modes is a gentle dissolve
-  // rather than light sweeping across the clouds.
-  float litDay = 0.0;
-  float litDusk = 0.0;
-  if (s < 1.0) {
-    float dSun = density(p + vec2(-0.6, 0.8) * 0.06, t, coverage);
-    litDay = clamp(0.78 + (d - dSun) * 2.2, 0.0, 1.0);
-  }
-  if (s > 0.0) {
-    // At sunset most of each cloud falls in shadow and only the sun-facing parts glow
-    float dSun = density(p + vec2(0.35, -0.94) * 0.06, t, coverage);
-    litDusk = clamp(0.48 + (d - dSun) * 3.2, 0.0, 1.0);
-  }
-
-  // Sunset clouds, graded by distance from the sun like real evening light:
-  // golden closest to it, warming to peach-coral, then a soft rose farther
-  // away; shadows are deep dusky blue, warming slightly near the sun
   float sunLight = exp(-sunDist * 0.9);
-  float warmth = smoothstep(0.3, 0.8, sunLight);
-  float nearest = smoothstep(0.6, 0.9, sunLight);
-  vec3 duskLit = mix(vec3(0.96, 0.60, 0.62), vec3(1.0, 0.66, 0.46), warmth);
-  duskLit = mix(duskLit, vec3(1.0, 0.74, 0.38), nearest);
-  duskLit *= 0.78 + 0.22 * sunLight;
-  vec3 duskShadow = mix(vec3(0.18, 0.23, 0.42), vec3(0.46, 0.32, 0.32), warmth);
-
-  vec3 dayCloud = mix(vec3(0.62, 0.70, 0.84), vec3(1.0, 0.995, 0.98), litDay);
-  vec3 duskCloud = mix(duskShadow, duskLit, litDusk);
-  vec3 cloud = mix(dayCloud, duskCloud, s);
-
-  // Bright lining on thin edges: silver by day; at sunset, sunlight shining
-  // through thin edges glows gold, strongest near the sun
-  float edge = smoothstep(0.0, 0.35, d) * (1.0 - smoothstep(0.35, 0.8, d));
-  cloud += edge * mix(vec3(0.08), vec3(0.30, 0.17, 0.05) * sunLight, s);
-
-  vec3 col = mix(sky, cloud, d * 0.96);
+  vec3 col = cloudy(p, t, coverage, uA1, uA2, sky, s, sunLight);
+  if (uMix > 0.0) col = mix(col, cloudy(p, t, coverage, uB1, uB2, sky, s, sunLight), uMix);
 
   // Gentle vignette
   vec2 v = frag - 0.5;
@@ -222,17 +335,123 @@ void main() {
   const uRes = gl.getUniformLocation(prog, 'uRes');
   const uTime = gl.getUniformLocation(prog, 'uTime');
   const uSunset = gl.getUniformLocation(prog, 'uSunset');
+  const uCover = gl.getUniformLocation(prog, 'uCover');
+  const uA1 = gl.getUniformLocation(prog, 'uA1');
+  const uA2 = gl.getUniformLocation(prog, 'uA2');
+  const uB1 = gl.getUniformLocation(prog, 'uB1');
+  const uB2 = gl.getUniformLocation(prog, 'uB2');
+  const uMix = gl.getUniformLocation(prog, 'uMix');
+
+  // The four basic cloud types (Luke Howard's, 1803), as the US National Weather Service describes them:
+  //   cirrus   high, thin ice clouds: white, delicate, hair-like filaments in patches or narrow bands, with a silky
+  //            sheen; so thin they hardly dim the sun
+  //   cumulus  detached, dense heaps with sharp outlines: brilliant white where the sun hits, relatively dark bases
+  //   stratus  a generally grey layer with a uniform base; blue sky shows where it breaks up
+  //   nimbus   rain cloud: a thick, dark grey layer, diffused by falling rain, thick enough to blot out the sun
+  // https://www.noaa.gov/jetstream/clouds/ten-basic-clouds
+  // Each type has a description (about), which carriemarkusen.net's command line shows when the type is picked,
+  // and two sets of four numbers:
+  //   look:  [scale, stretch, softness, extra cover]
+  //     scale        how small the clouds are (2 = half the size)
+  //     stretch      how far they're drawn out sideways (1 = not at all)
+  //     softness     how gradually their edges fade (0.32 = the original clouds)
+  //     extra cover  added to the cover slider's setting, so layer clouds fill more of the sky
+  //   style: [wisps, shading, opacity, darkness]
+  //     wisps        0 to 1, drawn as fine streaks (cirrus)
+  //     shading      how strongly they shade themselves (1 = the original clouds; more gives darker bases)
+  //     opacity      0 to 1, how solid they are (lower lets the sky show through)
+  //     darkness     0 to 1, how grey they are (rain clouds)
+  const TYPES = [
+    { name: 'cirrus',
+      about: 'cirrus comes from the latin word for a curl of hair. it forms high up, where water vapor freezes into ice crystals that the wind combs out.',
+      look: [1.0, 1.6, 0.55, 0.25],  style: [1.0, 0.15, 0.6, 0.0] },
+    { name: 'cumulus',
+      about: 'cumulus comes from the latin word for heap. it forms when warm air rises and cools until its water vapor condenses into flat-based puffs.',
+      look: [1.0, 1.0, 0.14, -0.04], style: [0.0, 1.6, 1.0, 0.0] },
+    { name: 'stratus',
+      about: 'stratus comes from the latin word for layer. it forms when a wide sheet of moist air cools without rising much, like lifting fog.',
+      look: [0.6, 4.0, 0.55, 0.3],   style: [0.0, 0.4, 0.95, 0.45] },
+    { name: 'nimbus',
+      about: 'nimbus comes from the latin word for rain cloud. it forms when a thick layer of moist air rises until its droplets grow heavy enough to fall.',
+      look: [0.6, 2.5, 0.50, 0.45],  style: [0.0, 0.8, 1.0, 0.85] },
+  ];
+
+  // Cloud type: a button for each of TYPES. Picking one dissolves the sky from the old type to the new over a few
+  // seconds. Picking again mid-dissolve starts the next one from whichever type is showing more.
+  const TYPE_SECONDS = 3;
+  let typeFrom = 1;  // starts on cumulus
+  let typeTo = 1;
+  let typeProgress = 1;
+  const typeButtons = TYPES.map((type, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = type.name;
+    b.setAttribute('aria-pressed', String(i === typeTo));
+    b.addEventListener('click', () => pickType(i));
+    document.getElementById('types').append(b);
+    return b;
+  });
+  // On carriemarkusen.net the simulator opens in a window, and the site's command line hint can say something:
+  // HINT when it opens or daytime/sunset is clicked, and the description of each cloud type picked. On its own,
+  // nothing is sent.
+  const HINT = 'i could lay here with you forever';
+  function sayHint(hint) {
+    if (window.parent !== window) window.parent.postMessage({ hint }, '*');
+  }
+  sayHint(HINT);
+
+  // carriemarkusen.net can show the simulator full screen behind its own panels. It then says how far in from each
+  // edge they reach, and the controls move to stay clear of them.
+  const controls = document.getElementById('controls');
+  window.addEventListener('message', (event) => {
+    if (event.source !== window.parent || window.parent === window) return;
+    const inset = event.data && event.data.inset;
+    if (!inset) return;
+    for (const side of ['right', 'bottom', 'left']) {
+      const px = Number(inset[side]);
+      if (Number.isFinite(px)) controls.style[side] = `${20 + Math.max(0, px)}px`;
+    }
+  });
+
+  function pickType(i) {
+    if (i === typeTo) return;
+    sayHint(TYPES[i].about);
+    if (typeProgress >= 0.5) typeFrom = typeTo;  // mostly the new type by now: dissolve from it instead
+    typeTo = i;
+    typeProgress = 0;
+    typeButtons.forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+  }
+
+  // Cloud cover: the slider runs from 0% (clear) to 100% (overcast). Each change grows or melts the clouds to it over
+  // a few seconds; moving the slider again mid-way carries on from where the sky is.
+  const coverInput = document.getElementById('cover');
+  const coverValue = document.getElementById('cover-value');
+  const COVER_SECONDS = 3;
+  let coverFrom = 0.5;
+  let coverTarget = 0.5;
+  let coverProgress = 1;
+  let coverNow = 0.5;
+  coverInput.addEventListener('input', () => {
+    coverFrom = coverNow;
+    coverTarget = coverInput.value / 100;
+    coverProgress = 0;
+    coverValue.textContent = `${coverInput.value}%`;
+  });
 
   // Sunset toggle: colors fade gently between modes over a few seconds
-  const button = document.getElementById('mode');
+  const daytimeButton = document.getElementById('daytime');
+  const sunsetButton = document.getElementById('sunset');
   const FADE_SECONDS = 4;
   let sunsetTarget = 0;
   let sunsetProgress = 0;
-  button.addEventListener('click', () => {
-    sunsetTarget = sunsetTarget ? 0 : 1;
-    button.textContent = sunsetTarget ? '[ daytime ]' : '[ sunset ]';
-    button.setAttribute('aria-pressed', String(Boolean(sunsetTarget)));
-  });
+  function setSunset(on) {
+    sayHint(HINT);
+    sunsetTarget = on ? 1 : 0;
+    daytimeButton.setAttribute('aria-pressed', String(!on));
+    sunsetButton.setAttribute('aria-pressed', String(on));
+  }
+  daytimeButton.addEventListener('click', () => setSunset(false));
+  sunsetButton.addEventListener('click', () => setSunset(true));
 
   // Clouds are soft, so rendering below full resolution looks the same and runs much faster
   const RENDER_SCALE = 0.8;
@@ -258,6 +477,21 @@ void main() {
       ? Math.min(sunsetTarget, sunsetProgress + step)
       : Math.max(sunsetTarget, sunsetProgress - step);
     const eased = sunsetProgress * sunsetProgress * (3 - 2 * sunsetProgress);
+
+    typeProgress = Math.min(1, typeProgress + dt / TYPE_SECONDS);
+    if (typeProgress >= 1) typeFrom = typeTo;
+    const from = TYPES[typeFrom];
+    const to = TYPES[typeTo];
+    gl.uniform4fv(uA1, from.look);
+    gl.uniform4fv(uA2, from.style);
+    gl.uniform4fv(uB1, to.look);
+    gl.uniform4fv(uB2, to.style);
+    gl.uniform1f(uMix, typeFrom === typeTo ? 0 : typeProgress * typeProgress * (3 - 2 * typeProgress));
+
+    coverProgress = Math.min(1, coverProgress + dt / COVER_SECONDS);
+    // Eases out: it starts moving straight away (so dragging the slider is felt as it moves), then settles gently
+    coverNow = coverFrom + (coverTarget - coverFrom) * (1 - (1 - coverProgress) ** 2);
+    gl.uniform1f(uCover, coverNow);
 
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uSunset, eased);
